@@ -9,6 +9,9 @@ type AuthState = {
   /** null while checking; false for a signed-in non-admin. */
   isAdmin: boolean | null;
   adminError: unknown;
+  /** Arrived from a "reset password" email: ask for a new password first. */
+  recovery: boolean;
+  finishRecovery: () => void;
   signOut: () => Promise<void>;
 };
 
@@ -19,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [adminError, setAdminError] = useState<unknown>(null);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -26,7 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setReady(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+      setSession(s);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -48,7 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ready, session, isAdmin, adminError, signOut }}>
+    <AuthContext.Provider value={{
+        ready,
+        session,
+        isAdmin,
+        adminError,
+        recovery,
+        finishRecovery: () => setRecovery(false),
+        signOut,
+      }}>
       {children}
     </AuthContext.Provider>
   );

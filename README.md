@@ -40,8 +40,13 @@ What you can do:
 3. **Env.** Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and
    `VITE_SUPABASE_ANON_KEY` (Project Settings → API — the **anon** key, never the
    service_role key). Optionally `VITE_APP_URL` for "View in app" links.
-4. **Run.** `npm install`, then `npm run dev`. Build with `npm run build`.
-5. **Deploy.** Import the repo in Vercel (framework: Vite), add the same env variables,
+4. **Sign-in links.** There's no separate admin password: you sign in with your NetFun
+   account using Google, an emailed sign-in link, or your NetFun password. For the Google
+   and email-link options to come back to the dashboard, add the dashboard's address
+   (e.g. `https://your-admin.vercel.app` and `http://localhost:5173`) under Supabase
+   **Authentication → URL Configuration → Redirect URLs**.
+5. **Run.** `npm install`, then `npm run dev`. Build with `npm run build`.
+6. **Deploy.** Import the repo in Vercel (framework: Vite), add the same env variables,
    deploy. `vercel.json` already handles page routing.
 
 ## Stack

@@ -25,7 +25,12 @@ export function friendlyError(err: unknown): string {
   if (msg.includes("cannot_moderate_self")) return "You can't ban or block yourself.";
   if (msg.includes("cannot_moderate_admin")) return "Admins can't be banned. Remove them as admin first.";
   if (msg.includes("only_admins_post_official")) return "Only admins can publish official posts.";
-  if (msg.includes("Invalid login credentials")) return "That email and password don't match.";
+  if (msg.includes("Invalid login credentials"))
+    return "That email and password don't match. No password yet? Use Google or an email link.";
+  if (/signups not allowed for otp|user not found/i.test(msg))
+    return "No NetFun account uses that email. Sign up in the app first.";
+  if (/provider is not enabled/i.test(msg))
+    return "Google sign-in isn't turned on in Supabase (Authentication → Providers → Google).";
   if (msg.includes("Could not find the function") || msg.includes("does not exist"))
     return "The admin SQL hasn't been run on Supabase yet (supabase/admin_tournaments.sql).";
   if (msg.includes("Bucket not found"))

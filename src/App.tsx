@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabaseConfigured, friendlyError } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button, Spinner } from "@/components/ui";
-import { AuthScreen, LoginPage } from "@/pages/Login";
+import { AuthScreen, LoginPage, SetPasswordPage } from "@/pages/Login";
 import { OverviewPage } from "@/pages/Overview";
 import { PostsPage } from "@/pages/Posts";
 import { TournamentsPage } from "@/pages/Tournaments";
@@ -12,7 +12,7 @@ import { TournamentDetailPage } from "@/pages/TournamentDetail";
 import { UsersPage } from "@/pages/Users";
 
 function Gate() {
-  const { ready, session, isAdmin, adminError, signOut } = useAuth();
+  const { ready, session, isAdmin, adminError, recovery, signOut } = useAuth();
 
   if (!supabaseConfigured) {
     return (
@@ -28,6 +28,7 @@ function Gate() {
   }
   if (!ready) return <Spinner />;
   if (!session) return <LoginPage />;
+  if (recovery) return <SetPasswordPage />;
   if (isAdmin === null) return <Spinner label="Checking access" />;
   if (!isAdmin) {
     return (
