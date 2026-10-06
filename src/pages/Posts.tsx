@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Heart, MessageCircle, Trash2, Trophy } from "lucide-react";
+import { BadgeCheck, Heart, MessageCircle, Pin, PinOff, Trash2, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import {
   createOfficialPost,
@@ -9,9 +9,10 @@ import {
   listPosts,
   listTournaments,
   postImageUrl,
+  setPostPin,
 } from "@/lib/api";
 import { friendlyError } from "@/lib/supabase";
-import { timeAgo } from "@/lib/format";
+import { dateTime, timeAgo } from "@/lib/format";
 import type { Post } from "@/lib/types";
 import {
   Avatar,
@@ -30,6 +31,23 @@ import {
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
 
 const MAX_BODY = 2000;
+
+const PIN_OPTIONS = [
+  { days: 0, label: "Don't pin" },
+  { days: 1, label: "1 day" },
+  { days: 3, label: "3 days" },
+  { days: 7, label: "7 days" },
+];
+
+// App pages a button can open. "custom" lets you type any https:// link.
+const BUTTON_TARGETS = [
+  { url: "/chats", label: "Chats" },
+  { url: "/communities", label: "Communities" },
+  { url: "/discover", label: "Discover people" },
+  { url: "/create", label: "Create a post" },
+  { url: "/profile", label: "My profile" },
+  { url: "custom", label: "Other link (https://…)" },
+];
 
 export function PostsPage() {
   const [filter, setFilter] = useState<"official" | "all">("official");
@@ -100,13 +118,21 @@ function Composer() {
   const [image, setImage] = useState<File | null>(null);
   const [communityId, setCommunityId] = useState("");
   const [tournamentId, setTournamentId] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [withButton, setWithButton] = useState(false);
+  const [ctaLabel, setCtaLabel] = useState("");
+  const [ctaTarget, setCtaTarget] = useState("/chats");
+  const [ctaCustom, setCtaCustom] = useState("");
+  const [pinDays, setPinDays] = useState(0);
   const [busy, setBusy] = useState(false);
+  const ctaUrl = ctaTarget === "custom" ? ctaCustom.trim() : ctaTarget;
+  const ctaOk = !withButton || (ctaLabel.trim().length > 0 && /^(\/|https:\/\/)\S*$/.test(ctaUrl));
   const communities = useQuery({ queryKey: ["communities"], queryFn: listCommunities });
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: listTournaments });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!body.trim()) return;
+    if (!body.trim() || !ctaOk) return;
     setBusy(true);
     try {
       await createOfficialPost({
@@ -114,9 +140,18 @@ function Composer() {
         image,
         communityId: communityId || null,
         tournamentId: tournamentId || null,
+        headline,
+        cta: withButton ? { label: ctaLabel, url: ctaUrl } : null,
+        pinDays,
       });
-      toast.success("Posted to the home feed");
+      toast.success(pinDays ? "Posted and pinned to the top of Home" : "Posted to the home feed");
       setBody("");
+      setHeadline("");
+      setWithButton(false);
+      setCtaLabel("");
+      setCtaTarget("/chats");
+      setCtaCustom("");
+      setPinDays(0);
       setImage(null);
       setCommunityId("");
       setTournamentId("");
@@ -133,6 +168,15 @@ function Composer() {
     <Card className="h-fit p-5 lg:sticky lg:top-6">
       <h2 className="mb-4 font-display text-lg font-bold">New official post</h2>
       <form onSubmit={submit} className="flex flex-col gap-4">
+        <Field label="Title (optional)" hint="Shown big on the purple-and-gold banner in the app.">
+          <input
+            className="input"
+            value={headline}
+            maxLength={80}
+            onChange={(e) => setHeadline(e.target.value)}
+            placeholder="e.g. Voice notes are here"
+          />
+        </Field>
         <Field label="Message" hint={`${body.length}/${MAX_BODY}`}>
           <textarea
             className="input min-h-32 resize-y leading-relaxed"
@@ -170,7 +214,69 @@ function Composer() {
               ))}
           </select>
         </Field>
-        <Button type="submit" loading={busy} disabled={!body.trim()}>
+        <div className="flex flex-col gap-3 rounded-2xl border border-nf-line p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={withButton} onChange={(e) => setWithButton(e.target.checked)} />
+            Add a button under the post
+          </label>
+          {withButton && (
+            <>
+              <Field label="Button text">
+                <input
+                  className="input"
+                  value={ctaLabel}
+                  maxLength={30}
+                  onChange={(e) => setCtaLabel(e.target.value)}
+                  placeholder="Try it in Chats"
+                />
+              </Field>
+              <Field label="Opens">
+                <select className="input" value={ctaTarget} onChange={(e) => setCtaTarget(e.target.value)}>
+                  {BUTTON_TARGETS.map((t) => (
+                    <option key={t.url} value={t.url}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {ctaTarget === "custom" && (
+                <Field label="Link" hint={ctaOk ? undefined : "Must start with https://"}>
+                  <input
+                    className="input"
+                    value={ctaCustom}
+                    maxLength={300}
+                    onChange={(e) => setCtaCustom(e.target.value)}
+                    placeholder="https://…"
+                  />
+                </Field>
+              )}
+            </>
+          )}
+        </div>
+        <div role="group" aria-labelledby="pin-label" className="flex flex-col gap-1.5">
+          <span id="pin-label" className="text-sm font-semibold text-nf-ink">
+            Pin to the top of Home
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {PIN_OPTIONS.map((o) => (
+              <button
+                key={o.days}
+                type="button"
+                aria-pressed={pinDays === o.days}
+                onClick={() => setPinDays(o.days)}
+                className={`h-9 rounded-full px-3.5 text-[13px] font-semibold transition ${
+                  pinDays === o.days
+                    ? "bg-nf-purple text-white"
+                    : "border border-nf-line-strong bg-white text-nf-soft-ink hover:bg-nf-field"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-nf-muted">A pinned post sits above everything with a “Pinned” label.</span>
+        </div>
+        <Button type="submit" loading={busy} disabled={!body.trim() || !ctaOk}>
           Publish to feed
         </Button>
       </form>
@@ -188,6 +294,21 @@ function PostRow({
   onBan?: () => void;
 }) {
   const author = post.author;
+  const qc = useQueryClient();
+  const [pinBusy, setPinBusy] = useState(false);
+  const pinned = !!post.pinned_until && new Date(post.pinned_until) > new Date();
+  const togglePin = async () => {
+    setPinBusy(true);
+    try {
+      await setPostPin(post.id, pinned ? 0 : 3);
+      toast.success(pinned ? "Unpinned. It stays in the feed." : "Pinned to the top of Home for 3 days");
+      qc.invalidateQueries({ queryKey: ["posts"] });
+    } catch (err) {
+      toast.error(friendlyError(err));
+    } finally {
+      setPinBusy(false);
+    }
+  };
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
@@ -206,11 +327,25 @@ function PostRow({
         </div>
         <div className="flex flex-wrap justify-end gap-1.5">
           {post.is_official && <Badge tone="purple">Official</Badge>}
+          {pinned && (
+            <Badge tone="gold">
+              <Pin className="size-3" /> Pinned
+            </Badge>
+          )}
           {post.visibility === "connections" && <Badge>Connections</Badge>}
           {author?.banned_at && <Badge tone="red">Author banned</Badge>}
         </div>
       </div>
+      {post.headline && <p className="px-4 pb-1 font-display text-lg font-bold">{post.headline}</p>}
       <p className="px-4 pb-3 text-[15px] leading-relaxed whitespace-pre-line">{post.body}</p>
+      {post.cta_label && (
+        <p className="px-4 pb-3 text-sm text-nf-soft-ink">
+          Button: <b className="text-nf-ink">{post.cta_label}</b> → {post.cta_url}
+        </p>
+      )}
+      {pinned && (
+        <p className="px-4 pb-3 text-xs text-nf-gold-ink">Pinned until {dateTime(post.pinned_until)}</p>
+      )}
       {post.image_path && (
         <img
           src={postImageUrl(post.image_path)}
@@ -232,6 +367,19 @@ function PostRow({
           </span>
         )}
         <span className="flex-1" />
+        {post.is_official && (
+          <Button size="sm" variant="ghost" loading={pinBusy} onClick={() => void togglePin()}>
+            {pinned ? (
+              <>
+                <PinOff className="size-4" /> Unpin
+              </>
+            ) : (
+              <>
+                <Pin className="size-4" /> Pin 3 days
+              </>
+            )}
+          </Button>
+        )}
         {onBan && (
           <Button size="sm" variant="ghost" onClick={onBan}>
             Ban author

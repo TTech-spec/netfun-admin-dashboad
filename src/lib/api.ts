@@ -5,6 +5,7 @@ import type {
   Community,
   EntryStatus,
   Post,
+  ReviewCommunity,
   Tournament,
   TournamentEntry,
   TournamentStatus,
@@ -67,6 +68,8 @@ export async function listPosts(opts: { officialOnly?: boolean; limit?: number }
 }
 
 export function postImageUrl(path: string): string {
+  // Photos posted from the app go to Cloudinary and are stored as full URLs.
+  if (/^https?:\/\//.test(path)) return path;
   return supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
 }
 
@@ -86,6 +89,12 @@ export async function createOfficialPost(input: {
   image?: File | Blob | null;
   communityId?: string | null;
   tournamentId?: string | null;
+  /** Big title on the post's banner. */
+  headline?: string;
+  /** A button under the post: label + an app page ("/chats") or https:// link. */
+  cta?: { label: string; url: string } | null;
+  /** Pin to the top of everyone's Home for this many days. */
+  pinDays?: number;
 }) {
   const me = await requireUserId();
   const image_path = input.image ? await uploadPostImage(me, input.image) : null;
@@ -99,14 +108,32 @@ export async function createOfficialPost(input: {
       is_official: true,
       tournament_id: input.tournamentId ?? null,
       image_path,
+      // Only sent when used, so plain posts still work before part-11 is run.
+      ...(input.headline?.trim() ? { headline: input.headline.trim() } : {}),
+      ...(input.cta ? { cta_label: input.cta.label.trim(), cta_url: input.cta.url.trim() } : {}),
+      ...(input.pinDays ? { pinned_until: pinUntil(input.pinDays) } : {}),
     }),
+  );
+}
+
+function pinUntil(days: number) {
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
+/** Pins an official post to the top of Home (days = 0 unpins it). */
+export async function setPostPin(postId: string, days: number) {
+  check(
+    await supabase
+      .from("posts")
+      .update({ pinned_until: days ? pinUntil(days) : null })
+      .eq("id", postId),
   );
 }
 
 export async function deletePost(post: Pick<Post, "id" | "image_path">) {
   check(await supabase.from("posts").delete().eq("id", post.id));
-  // Best effort: the post is gone either way.
-  if (post.image_path) await supabase.storage.from("post-images").remove([post.image_path]);
+  // Best effort: the post is gone either way. (Cloudinary photos are cleaned up by the app.)
+  if (post.image_path && !/^https?:\/\//.test(post.image_path)) await supabase.storage.from("post-images").remove([post.image_path]);
 }
 
 export async function listCommunities(): Promise<Community[]> {
@@ -117,6 +144,35 @@ export async function listCommunities(): Promise<Community[]> {
       .order("is_official", { ascending: false })
       .order("name"),
   ) as Community[];
+}
+
+// ─── Communities (verification) ───────────────────────────────────────────
+
+type RawReviewCommunity = Omit<ReviewCommunity, "member_count"> & {
+  community_members: { count: number }[];
+};
+
+export async function listCommunitiesForReview(): Promise<ReviewCommunity[]> {
+  const rows = check(
+    await supabase
+      .from("communities")
+      .select(
+        "id,slug,name,description,category,is_official,theme_color,accent_color,verified_at,created_at,creator:profiles(id,username,full_name,university,avatar_color), community_members(count)",
+      )
+      .eq("is_official", false)
+      .order("created_at", { ascending: false }),
+  ) as unknown as RawReviewCommunity[];
+  return rows.map(({ community_members, ...c }) => ({
+    ...c,
+    member_count: community_members?.[0]?.count ?? 0,
+  }));
+}
+
+/** Verified communities get a purple Verified tag and their posts show on everyone's Home. */
+export async function setCommunityVerified(communityId: string, verified: boolean) {
+  check(
+    await supabase.rpc("admin_set_verified", { p_community: communityId, p_verified: verified }),
+  );
 }
 
 // ─── Tournaments ──────────────────────────────────────────────────────────

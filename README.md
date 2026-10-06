@@ -14,6 +14,12 @@ What you can do:
   question players answer when they apply. Publish it (optionally announcing it on the home
   feed), then **accept or reject** each applicant. Players get a notification either way.
   Move the tournament through Open → Registration closed → Live → Completed, or cancel it.
+- **Communities** – verify member-made communities. Verified ones get a purple
+  **Verified** tag in the app and their posts show on everyone's Home feed; unverified ones
+  only show inside the community.
+- Official posts can also have a **title** (big banner in the app), a **button** (opens an
+  app page like `/chats` or any https:// link) and a **pin** to the top of Home for 1, 3 or
+  7 days.
 - **Users** – search everyone (name, username or email) and
   - **Block from tournaments**: they keep using NetFun but can't apply to any tournament;
     their open applications are rejected.
@@ -26,6 +32,8 @@ What you can do:
    [`supabase/admin_tournaments.sql`](supabase/admin_tournaments.sql) as a new query
    (the same file is `supabase/migrations/20260927120000_admin_tournaments.sql` in the app
    repo). It's safe to run again.
+   Then run `supabase/setup/part-11-admin-verified-official.sql` from the **app** repo
+   (verified communities, post titles, buttons and pins). The two files work in either order.
 2. **Make yourself an admin.** Sign up in the NetFun app if you haven't, then run
    (with your login email):
 

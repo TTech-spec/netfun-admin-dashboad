@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, LogOut, Megaphone, Menu, Trophy, Users, X } from "lucide-react";
+import { BadgeCheck, LayoutDashboard, LogOut, Megaphone, Menu, Trophy, Users, X } from "lucide-react";
 import { getStats } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/posts", label: "Feed posts", icon: Megaphone },
+  { to: "/communities", label: "Communities", icon: BadgeCheck },
   { to: "/tournaments", label: "Tournaments", icon: Trophy },
   { to: "/users", label: "Users", icon: Users },
 ];

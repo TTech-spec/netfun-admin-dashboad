@@ -31,6 +31,10 @@ export function friendlyError(err: unknown): string {
     return "No NetFun account uses that email. Sign up in the app first.";
   if (/provider is not enabled/i.test(msg))
     return "Google sign-in isn't turned on in Supabase (Authentication → Providers → Google).";
+  if (msg.includes("admin_set_verified") || msg.includes("verified_at") || msg.includes("pinned_until") || msg.includes("headline") || msg.includes("cta_label"))
+    return "Run part-11-admin-verified-official.sql from the app repo on Supabase first.";
+  if (msg.includes("posts_official_fields_ok"))
+    return "Check the title (max 80), button text (max 30) and link (an app page like /chats or https://…).";
   if (msg.includes("Could not find the function") || msg.includes("does not exist"))
     return "The admin SQL hasn't been run on Supabase yet (supabase/admin_tournaments.sql).";
   if (msg.includes("Bucket not found"))

@@ -13,6 +13,21 @@ export type Profile = {
 
 export type Community = { id: string; slug: string; name: string; is_official: boolean };
 
+export type ReviewCommunity = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  is_official: boolean;
+  theme_color: string;
+  accent_color: string;
+  verified_at?: string | null;
+  created_at: string;
+  creator: Profile | null;
+  member_count: number;
+};
+
 export type Post = {
   id: string;
   author_id: string;
@@ -23,6 +38,11 @@ export type Post = {
   visibility: "everyone" | "connections";
   is_official: boolean;
   tournament_id: string | null;
+  /** From the app's part-11 SQL; missing until it's run. */
+  headline?: string | null;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  pinned_until?: string | null;
   created_at: string;
   author: Profile | null;
   community: Pick<Community, "slug" | "name"> | null;
