@@ -64,7 +64,8 @@ export function CommunitiesPage() {
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-nf-muted" />
           <input
             className="input pl-10"
-            placeholder="Search name, creator, category"
+            placeholder="Search communities"
+            aria-label="Search by name, creator or category"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
