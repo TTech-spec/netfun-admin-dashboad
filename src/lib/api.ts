@@ -274,6 +274,56 @@ export async function announceTournament(t: Tournament, body: string) {
   await createOfficialPost({ body, image, tournamentId: t.id });
 }
 
+/**
+ * Starts the livestream: saves the link, marks the tournament Live (accepted
+ * players get a notification) and, if asked, posts it with a "Watch live" button.
+ */
+export async function goLive(
+  t: Tournament,
+  input: {
+    streamUrl: string;
+    post?: { body: string; communityId: string | null; pinDays: number } | null;
+  },
+) {
+  check(
+    await supabase
+      .from("tournaments")
+      .update({
+        stream_url: input.streamUrl,
+        stream_started_at: t.stream_started_at ?? new Date().toISOString(),
+        status: "live",
+      })
+      .eq("id", t.id),
+  );
+  if (input.post) await postStream(t, input.streamUrl, input.post);
+}
+
+/** Posts the stream link to Home (and a community) as an official post. */
+export async function postStream(
+  t: Tournament,
+  streamUrl: string,
+  post: { body: string; communityId: string | null; pinDays: number },
+) {
+  let image: Blob | null = null;
+  if (t.banner_path) {
+    const res = await supabase.storage.from("tournament-banners").download(t.banner_path);
+    if (!res.error) image = res.data;
+  }
+  await createOfficialPost({
+    body: post.body,
+    image,
+    tournamentId: t.id,
+    communityId: post.communityId,
+    headline: `🔴 LIVE: ${t.title}`.slice(0, 80),
+    cta: { label: "Watch live", url: streamUrl },
+    pinDays: post.pinDays,
+  });
+}
+
+export async function removeStream(tournamentId: string) {
+  check(await supabase.from("tournaments").update({ stream_url: null }).eq("id", tournamentId));
+}
+
 export async function listEntries(tournamentId: string): Promise<TournamentEntry[]> {
   return check(
     await supabase

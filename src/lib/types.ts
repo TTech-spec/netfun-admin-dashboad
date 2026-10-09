@@ -64,6 +64,8 @@ export type Tournament = {
   max_participants: number | null;
   starts_at: string | null;
   registration_closes_at: string | null;
+  stream_url?: string | null;
+  stream_started_at?: string | null;
   banner_path: string | null;
   status: TournamentStatus;
   created_by: string | null;

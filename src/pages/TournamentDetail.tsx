@@ -46,17 +46,18 @@ import {
   Tabs,
 } from "@/components/ui";
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
+import { LivestreamCard } from "@/components/LivestreamCard";
 
 // Which status moves make sense from each status.
 const NEXT: Record<TournamentStatus, { to: TournamentStatus; label: string }[]> = {
   draft: [{ to: "open", label: "Open registration" }],
   open: [
     { to: "closed", label: "Close registration" },
-    { to: "live", label: "Start (go live)" },
+    { to: "live", label: "Start tournament" },
   ],
   closed: [
     { to: "open", label: "Reopen registration" },
-    { to: "live", label: "Start (go live)" },
+    { to: "live", label: "Start tournament" },
   ],
   live: [{ to: "completed", label: "Mark completed" }],
   completed: [{ to: "live", label: "Back to live" }],
@@ -280,6 +281,8 @@ function Sidebar({ t, accepted }: { t: Tournament; accepted: number }) {
           )}
         </div>
       </Card>
+
+      {t.status !== "draft" && t.status !== "cancelled" && <LivestreamCard t={t} />}
 
       {t.description && (
         <Card className="p-5">
