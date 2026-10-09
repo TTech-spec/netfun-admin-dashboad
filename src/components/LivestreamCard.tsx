@@ -7,6 +7,7 @@ import { friendlyError } from "@/lib/supabase";
 import { streamInfo } from "@/lib/stream";
 import type { Tournament } from "@/lib/types";
 import { Badge, Button, Card, Field, Modal } from "./ui";
+import { LiveChatModeration } from "./LiveChatModeration";
 
 const PIN_CHOICES = [
   { days: 0, label: "Don't pin" },
@@ -89,6 +90,7 @@ export function LivestreamCard({ t }: { t: Tournament }) {
             >
               Change link
             </Button>
+            <LiveChatModeration tournamentId={t.id} />
             <Button size="sm" variant="ghost" loading={busy === "remove"} onClick={remove}>
               Remove
             </Button>

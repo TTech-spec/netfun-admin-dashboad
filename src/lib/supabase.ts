@@ -25,6 +25,8 @@ export function friendlyError(err: unknown): string {
   if (msg.includes("cannot_moderate_self")) return "You can't ban or block yourself.";
   if (msg.includes("cannot_moderate_admin")) return "Admins can't be banned. Remove them as admin first.";
   if (msg.includes("only_admins_post_official")) return "Only admins can publish official posts.";
+  if (msg.includes("tournament_chat"))
+    return "Live chat isn't set up yet. Run part-26-tournament-live-chat.sql in Supabase.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))

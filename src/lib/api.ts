@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import type {
   AdminStats,
+  ChatMessage,
   AdminUser,
   Community,
   EntryStatus,
@@ -318,6 +319,23 @@ export async function postStream(
     cta: { label: "Watch live", url: streamUrl },
     pinDays: post.pinDays,
   });
+}
+
+export async function listChat(tournamentId: string): Promise<ChatMessage[]> {
+  return check(
+    await supabase
+      .from("tournament_chat")
+      .select(
+        "*, user:profiles!tournament_chat_user_id_fkey(id,username,full_name,university,avatar_color,banned_at)",
+      )
+      .eq("tournament_id", tournamentId)
+      .order("created_at", { ascending: false })
+      .limit(300),
+  ) as ChatMessage[];
+}
+
+export async function deleteChatMessage(id: string) {
+  check(await supabase.from("tournament_chat").delete().eq("id", id));
 }
 
 export async function removeStream(tournamentId: string) {

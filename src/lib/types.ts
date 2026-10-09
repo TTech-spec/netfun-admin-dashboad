@@ -118,3 +118,12 @@ export type AdminStats = {
   pending_entries: number;
   banned: number;
 };
+
+export type ChatMessage = {
+  id: string;
+  tournament_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  user: Profile | null;
+};
