@@ -161,7 +161,7 @@ export async function listCommunitiesForReview(): Promise<ReviewCommunity[]> {
     await supabase
       .from("communities")
       .select(
-        "id,slug,name,description,category,is_official,theme_color,accent_color,verified_at,created_at,creator:profiles(id,username,full_name,university,avatar_color), community_members(count)",
+        "id,slug,name,description,category,is_official,theme_color,accent_color,verified_at,created_at,creator:profiles!communities_created_by_fkey(id,username,full_name,university,avatar_color), community_members(count)",
       )
       .eq("is_official", false)
       .order("created_at", { ascending: false }),
