@@ -149,3 +149,14 @@ export type OfficialThread = {
   last_at: string;
   unread: number;
 };
+
+export type TournamentInvite = {
+  id: string;
+  tournament_id: string;
+  community_id: string;
+  status: "pending" | "accepted" | "declined";
+  message: string;
+  created_at: string;
+  responded_at: string | null;
+  community: { id: string; name: string; slug: string; theme_color: string } | null;
+};

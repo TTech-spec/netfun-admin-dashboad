@@ -47,6 +47,7 @@ import {
 } from "@/components/ui";
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
 import { LivestreamCard } from "@/components/LivestreamCard";
+import { CommunityInvitesCard } from "@/components/CommunityInvitesCard";
 
 // Which status moves make sense from each status.
 const NEXT: Record<TournamentStatus, { to: TournamentStatus; label: string }[]> = {
@@ -283,6 +284,8 @@ function Sidebar({ t, accepted }: { t: Tournament; accepted: number }) {
       </Card>
 
       {t.status !== "draft" && t.status !== "cancelled" && <LivestreamCard t={t} />}
+
+      <CommunityInvitesCard t={t} />
 
       {t.description && (
         <Card className="p-5">

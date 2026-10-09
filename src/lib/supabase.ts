@@ -31,6 +31,10 @@ export function friendlyError(err: unknown): string {
     return "You can only message people who own a community.";
   if (msg.includes("official_messages") || msg.includes("admin_official_threads") || msg.includes("admin_user_birthdates"))
     return "This needs part-28-official-messages-birthdates.sql run in Supabase.";
+  if (msg.includes("tournament_community_invites") || msg.includes("admin_invite_communities"))
+    return "Community invites need part-30-tournament-community-invites.sql run in Supabase.";
+  if (msg.includes("tournament_not_open"))
+    return "Publish the tournament first. Drafts, finished and cancelled tournaments can't take invites.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))

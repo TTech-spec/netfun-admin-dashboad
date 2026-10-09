@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import type {
   AdminStats,
+  TournamentInvite,
   ChatMessage,
   OfficialMessage,
   OfficialThread,
@@ -435,4 +436,31 @@ export async function getProfileWithCommunities(
       .eq("id", userId)
       .maybeSingle(),
   ) as (Profile & { communities: { id: string; name: string }[] }) | null;
+}
+
+// ─── Communities invited to a tournament ──────────────────────────────────
+
+export async function listTournamentInvites(tournamentId: string): Promise<TournamentInvite[]> {
+  return check(
+    await supabase
+      .from("tournament_community_invites")
+      .select("*, community:communities(id,name,slug,theme_color)")
+      .eq("tournament_id", tournamentId)
+      .order("created_at", { ascending: false }),
+  ) as TournamentInvite[];
+}
+
+/** Invites the communities' owners; returns how many invites went out. */
+export async function inviteCommunities(tournamentId: string, communityIds: string[], message: string) {
+  return check(
+    await supabase.rpc("admin_invite_communities", {
+      p_tournament: tournamentId,
+      p_communities: communityIds,
+      p_message: message.trim(),
+    }),
+  ) as number;
+}
+
+export async function removeInvite(inviteId: string) {
+  check(await supabase.rpc("admin_remove_community_invite", { p_invite: inviteId }));
 }
