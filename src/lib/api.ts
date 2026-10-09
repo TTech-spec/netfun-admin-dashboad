@@ -380,14 +380,23 @@ export async function listUsers(search = ""): Promise<AdminUser[]> {
   ) as AdminUser[];
 }
 
-/** Dates of birth from sign-up (admins only). Map of user id → "YYYY-MM-DD". */
-export async function getBirthdates(ids: string[]): Promise<Record<string, string>> {
+export type UserDetails = { birth_date: string | null; gender: string | null };
+
+/**
+ * Date of birth and gender from sign-up (admins only), by user id.
+ * Falls back to dates of birth only if part-31 hasn't been run yet.
+ */
+export async function getUserDetails(ids: string[]): Promise<Record<string, UserDetails>> {
   if (!ids.length) return {};
-  const res = await supabase.rpc("admin_user_birthdates", { ids });
+  type Row = { id: string; birth_date: string | null; gender?: string | null };
+  let res = await supabase.rpc("admin_user_details", { ids });
+  if (res.error && /admin_user_details|does not exist|Could not find/.test(res.error.message)) {
+    res = await supabase.rpc("admin_user_birthdates", { ids });
+  }
   if (res.error) throw res.error;
-  const out: Record<string, string> = {};
-  for (const r of (res.data ?? []) as { id: string; birth_date: string | null }[])
-    if (r.birth_date) out[r.id] = r.birth_date;
+  const out: Record<string, UserDetails> = {};
+  for (const r of (res.data ?? []) as Row[])
+    out[r.id] = { birth_date: r.birth_date ?? null, gender: r.gender ?? null };
   return out;
 }
 

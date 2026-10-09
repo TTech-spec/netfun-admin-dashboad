@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, Cake, ShieldOff } from "lucide-react";
-import { getBirthdates, listUsers } from "@/lib/api";
-import { birthdayText, timeAgo } from "@/lib/format";
+import { getUserDetails, listUsers } from "@/lib/api";
+import { birthdayText, genderText, timeAgo } from "@/lib/format";
 import type { AdminUser } from "@/lib/types";
 import {
   Avatar,
@@ -32,9 +32,9 @@ export function UsersPage() {
 
   const users = useQuery({ queryKey: ["users", debounced], queryFn: () => listUsers(debounced) });
   const ids = (users.data ?? []).map((u) => u.id);
-  const births = useQuery({
-    queryKey: ["birthdates", ids],
-    queryFn: () => getBirthdates(ids),
+  const details = useQuery({
+    queryKey: ["user-details", ids],
+    queryFn: () => getUserDetails(ids),
     enabled: ids.length > 0,
     retry: false,
   });
@@ -98,11 +98,14 @@ export function UsersPage() {
                 </p>
                 <p className="flex items-center gap-1 text-xs text-nf-muted">
                   <Cake className="size-3.5" aria-hidden />
-                  {births.data?.[u.id]
-                    ? birthdayText(births.data[u.id])
-                    : births.isLoading
-                      ? "…"
-                      : "No date of birth"}
+                  {details.isLoading
+                    ? "…"
+                    : [
+                        details.data?.[u.id]?.birth_date
+                          ? birthdayText(details.data[u.id].birth_date!)
+                          : "No date of birth",
+                        genderText(details.data?.[u.id]?.gender),
+                      ].join(" · ")}
                 </p>
                 {u.ban_reason && <p className="text-xs text-nf-red">Ban reason: {u.ban_reason}</p>}
               </div>

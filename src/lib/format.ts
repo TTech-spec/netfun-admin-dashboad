@@ -41,3 +41,16 @@ export function birthdayText(ymd: string): string {
   const date = born.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   return age >= 0 && age < 130 ? `Born ${date} · ${age} years old` : `Born ${date}`;
 }
+
+const GENDERS: Record<string, string> = {
+  male: "Male",
+  female: "Female",
+  "non-binary": "Non-binary",
+  "prefer-not": "Prefers not to say",
+};
+
+/** Gender picked at sign-up, as shown to admins. */
+export function genderText(g: string | null | undefined): string {
+  if (!g) return "Gender not given";
+  return GENDERS[g] ?? g;
+}
