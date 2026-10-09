@@ -8,6 +8,7 @@ import { friendlyError } from "@/lib/supabase";
 import type { Tournament } from "@/lib/types";
 import { Badge, Button, Card } from "./ui";
 import { LiveChatModeration } from "./LiveChatModeration";
+import { MessagePlayersDialog } from "./MessagePlayers";
 
 type Source = "camera" | "screen";
 
@@ -23,6 +24,7 @@ export function InAppBroadcastCard({ t }: { t: Tournament }) {
   const [mic, setMic] = useState(true);
   const [state, setState] = useState<"idle" | "starting" | "live" | "stopping">("idle");
   const [postToFeed, setPostToFeed] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["tournament", t.id] });
@@ -230,6 +232,9 @@ export function InAppBroadcastCard({ t }: { t: Tournament }) {
               {mic ? "Mute mic" : "Unmute mic"}
             </Button>
             <LiveChatModeration tournamentId={t.id} />
+            <Button size="sm" variant="secondary" onClick={() => setInviteOpen(true)}>
+              <Radio className="size-4" /> Invite players to watch
+            </Button>
           </div>
           <Button variant="danger" loading={state === "stopping"} onClick={() => void stop()}>
             <Square className="size-4" /> End broadcast
@@ -237,6 +242,7 @@ export function InAppBroadcastCard({ t }: { t: Tournament }) {
           <p className="text-xs text-nf-muted">Keep this tab open while you're live.</p>
         </>
       )}
+      <MessagePlayersDialog t={t} open={inviteOpen} live onClose={() => setInviteOpen(false)} />
     </Card>
   );
 }

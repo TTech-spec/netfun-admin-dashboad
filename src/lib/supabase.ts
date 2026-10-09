@@ -45,6 +45,9 @@ export function friendlyError(err: unknown): string {
     return "In-app streaming needs part-32-in-app-livestream.sql run in Supabase.";
   if (msg.includes("Permission denied") || msg.includes("NotAllowedError"))
     return "Your browser blocked the camera/microphone/screen. Allow it in the address bar and try again.";
+  if (msg.includes("admin_message_tournament_players") || msg.includes("tournament_messages"))
+    return "Messaging players needs part-33-tournament-player-messages.sql run in Supabase.";
+  if (msg.includes("message_length")) return "Write a message (up to 500 characters).";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))

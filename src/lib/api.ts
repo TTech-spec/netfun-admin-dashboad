@@ -514,3 +514,44 @@ export async function setLiveInApp(t: Tournament, on: boolean) {
       .eq("id", t.id),
   );
 }
+
+// ─── Messages to a tournament's players ──────────────────────────────────
+
+export type PlayerAudience = "everyone" | "accepted" | "pending" | "rejected" | "chosen";
+
+export type TournamentMessage = {
+  id: string;
+  body: string;
+  audience: string;
+  is_live: boolean;
+  recipients: number;
+  created_at: string;
+};
+
+/** Sends a NetFun notification to the chosen players. Returns how many got it. */
+export async function messagePlayers(
+  tournamentId: string,
+  input: { message: string; audience: PlayerAudience; userIds?: string[]; live?: boolean },
+): Promise<number> {
+  return check(
+    await supabase.rpc("admin_message_tournament_players", {
+      p_tournament: tournamentId,
+      p_message: input.message.trim(),
+      p_statuses:
+        input.audience === "everyone" || input.audience === "chosen" ? null : [input.audience],
+      p_users: input.audience === "chosen" ? (input.userIds ?? []) : null,
+      p_live: !!input.live,
+    }),
+  ) as number;
+}
+
+export async function listTournamentMessages(tournamentId: string): Promise<TournamentMessage[]> {
+  return check(
+    await supabase
+      .from("tournament_messages")
+      .select("id,body,audience,is_live,recipients,created_at")
+      .eq("tournament_id", tournamentId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ) as TournamentMessage[];
+}
