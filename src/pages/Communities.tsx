@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, ExternalLink, Search, Users } from "lucide-react";
+import { BadgeCheck, ExternalLink, MessageCircle, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { listCommunitiesForReview, setCommunityVerified } from "@/lib/api";
 import { appUrl, friendlyError } from "@/lib/supabase";
@@ -125,6 +126,15 @@ export function CommunitiesPage() {
               )}
               {c.verified_at && <span className="text-nf-muted">verified {timeAgo(c.verified_at)}</span>}
             </div>
+
+            {c.creator && (
+              <Link
+                to={`/messages/${c.creator.id}`}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-nf-line-strong text-[13px] font-semibold hover:bg-nf-field"
+              >
+                <MessageCircle className="size-4" /> Message owner
+              </Link>
+            )}
 
             <div className="mt-auto flex gap-2 pt-1">
               {appUrl && (

@@ -29,3 +29,15 @@ export function toLocalInput(iso: string | null | undefined): string {
 export function fromLocalInput(value: string): string | null {
   return value ? new Date(value).toISOString() : null;
 }
+
+/** "12 Mar 2004 · 21 years old" from a "YYYY-MM-DD" date of birth. */
+export function birthdayText(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return ymd;
+  const born = new Date(y, m - 1, d);
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() < m - 1 || (now.getMonth() === m - 1 && now.getDate() < d)) age--;
+  const date = born.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return age >= 0 && age < 130 ? `Born ${date} · ${age} years old` : `Born ${date}`;
+}

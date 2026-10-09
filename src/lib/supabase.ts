@@ -27,6 +27,10 @@ export function friendlyError(err: unknown): string {
   if (msg.includes("only_admins_post_official")) return "Only admins can publish official posts.";
   if (msg.includes("tournament_chat"))
     return "Live chat isn't set up yet. Run part-26-tournament-live-chat.sql in Supabase.";
+  if (msg.includes("not_community_owner"))
+    return "You can only message people who own a community.";
+  if (msg.includes("official_messages") || msg.includes("admin_official_threads") || msg.includes("admin_user_birthdates"))
+    return "This needs part-28-official-messages-birthdates.sql run in Supabase.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))

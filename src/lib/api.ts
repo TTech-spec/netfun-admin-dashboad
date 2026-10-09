@@ -2,6 +2,9 @@ import { supabase } from "./supabase";
 import type {
   AdminStats,
   ChatMessage,
+  OfficialMessage,
+  OfficialThread,
+  Profile,
   AdminUser,
   Community,
   EntryStatus,
@@ -376,10 +379,60 @@ export async function listUsers(search = ""): Promise<AdminUser[]> {
   ) as AdminUser[];
 }
 
+/** Dates of birth from sign-up (admins only). Map of user id → "YYYY-MM-DD". */
+export async function getBirthdates(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const res = await supabase.rpc("admin_user_birthdates", { ids });
+  if (res.error) throw res.error;
+  const out: Record<string, string> = {};
+  for (const r of (res.data ?? []) as { id: string; birth_date: string | null }[])
+    if (r.birth_date) out[r.id] = r.birth_date;
+  return out;
+}
+
 export async function setBan(userId: string, banned: boolean, reason = "") {
   check(await supabase.rpc("admin_set_ban", { target: userId, banned, reason }));
 }
 
 export async function setTournamentBlock(userId: string, blocked: boolean) {
   check(await supabase.rpc("admin_set_tournament_block", { target: userId, blocked }));
+}
+
+// ─── NetFun Official messages to community owners ─────────────────────────
+
+export async function listOfficialThreads(): Promise<OfficialThread[]> {
+  return check(await supabase.rpc("admin_official_threads")) as OfficialThread[];
+}
+
+export async function listOfficialThread(userId: string): Promise<OfficialMessage[]> {
+  return check(
+    await supabase
+      .from("official_messages")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(500),
+  ) as OfficialMessage[];
+}
+
+export async function sendOfficialMessage(userId: string, body: string): Promise<OfficialMessage> {
+  return check(
+    await supabase.rpc("admin_send_official_message", { target: userId, msg: body.trim() }),
+  ) as OfficialMessage;
+}
+
+export async function markRepliesRead(userId: string) {
+  check(await supabase.rpc("admin_mark_official_read", { target: userId }));
+}
+
+export async function getProfileWithCommunities(
+  userId: string,
+): Promise<(Profile & { communities: { id: string; name: string }[] }) | null> {
+  return check(
+    await supabase
+      .from("profiles")
+      .select("id,username,full_name,university,avatar_color,banned_at, communities!communities_created_by_fkey(id,name)")
+      .eq("id", userId)
+      .maybeSingle(),
+  ) as (Profile & { communities: { id: string; name: string }[] }) | null;
 }

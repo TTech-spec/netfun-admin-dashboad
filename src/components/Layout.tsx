@@ -1,14 +1,25 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, LayoutDashboard, LogOut, Megaphone, Menu, Trophy, Users, X } from "lucide-react";
-import { getStats } from "@/lib/api";
+import {
+  BadgeCheck,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Menu,
+  MessageCircle,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
+import { getStats, listOfficialThreads } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/posts", label: "Feed posts", icon: Megaphone },
   { to: "/communities", label: "Communities", icon: BadgeCheck },
+  { to: "/messages", label: "Messages", icon: MessageCircle },
   { to: "/tournaments", label: "Tournaments", icon: Trophy },
   { to: "/users", label: "Users", icon: Users },
 ];
@@ -18,6 +29,13 @@ export function Layout() {
   const [open, setOpen] = useState(false);
   const stats = useQuery({ queryKey: ["stats"], queryFn: getStats, refetchInterval: 60_000 });
   const pending = stats.data?.pending_entries ?? 0;
+  const threads = useQuery({
+    queryKey: ["official-threads"],
+    queryFn: listOfficialThreads,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const unreadReplies = (threads.data ?? []).reduce((n, t) => n + Number(t.unread || 0), 0);
 
   const nav = (
     <nav aria-label="Admin" className="flex flex-col gap-1">
@@ -38,6 +56,11 @@ export function Layout() {
           {to === "/tournaments" && pending > 0 && (
             <span className="rounded-full bg-nf-gold px-2 py-0.5 text-xs font-bold text-nf-plum">
               {pending}
+            </span>
+          )}
+          {to === "/messages" && unreadReplies > 0 && (
+            <span className="rounded-full bg-nf-gold px-2 py-0.5 text-xs font-bold text-nf-plum">
+              {unreadReplies}
             </span>
           )}
         </NavLink>

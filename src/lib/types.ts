@@ -127,3 +127,25 @@ export type ChatMessage = {
   created_at: string;
   user: Profile | null;
 };
+
+export type OfficialMessage = {
+  id: string;
+  user_id: string;
+  /** true: sent by NetFun Official (an admin). false: the owner's reply. */
+  from_netfun: boolean;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type OfficialThread = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_color: string;
+  communities: string | null;
+  last_body: string;
+  last_from_netfun: boolean;
+  last_at: string;
+  unread: number;
+};

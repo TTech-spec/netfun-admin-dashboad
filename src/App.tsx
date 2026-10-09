@@ -7,6 +7,7 @@ import { AuthScreen, LoginPage, SetPasswordPage } from "@/pages/Login";
 import { OverviewPage } from "@/pages/Overview";
 import { PostsPage } from "@/pages/Posts";
 import { CommunitiesPage } from "@/pages/Communities";
+import { MessagesPage } from "@/pages/Messages";
 import { TournamentsPage } from "@/pages/Tournaments";
 import { TournamentFormPage } from "@/pages/TournamentForm";
 import { TournamentDetailPage } from "@/pages/TournamentDetail";
@@ -53,6 +54,8 @@ function Gate() {
         <Route index element={<OverviewPage />} />
         <Route path="posts" element={<PostsPage />} />
         <Route path="communities" element={<CommunitiesPage />} />
+        <Route path="messages" element={<MessagesPage />} />
+        <Route path="messages/:userId" element={<MessagesPage />} />
         <Route path="tournaments" element={<TournamentsPage />} />
         <Route path="tournaments/new" element={<TournamentFormPage />} />
         <Route path="tournaments/:id" element={<TournamentDetailPage />} />
