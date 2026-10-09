@@ -56,7 +56,7 @@ export function LivestreamCard({ t }: { t: Tournament }) {
     <Card className="flex flex-col gap-3 p-5">
       <div className="flex items-center gap-2">
         <Radio className="size-5 text-nf-red" aria-hidden />
-        <h2 className="flex-1 font-display text-base font-bold">Livestream</h2>
+        <h2 className="flex-1 font-display text-base font-bold">Stream from YouTube or Twitch</h2>
         {live && t.status === "live" && <Badge tone="red">Live</Badge>}
       </div>
 

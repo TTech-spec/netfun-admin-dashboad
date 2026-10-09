@@ -66,6 +66,7 @@ export type Tournament = {
   registration_closes_at: string | null;
   stream_url?: string | null;
   stream_started_at?: string | null;
+  live_in_app?: boolean;
   banner_path: string | null;
   status: TournamentStatus;
   created_by: string | null;

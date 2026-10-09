@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { appUrl, supabase } from "./supabase";
 import type {
   AdminStats,
   TournamentInvite,
@@ -472,4 +472,45 @@ export async function inviteCommunities(tournamentId: string, communityIds: stri
 
 export async function removeInvite(inviteId: string) {
   check(await supabase.rpc("admin_remove_community_invite", { p_invite: inviteId }));
+}
+
+// ─── In-app broadcast (LiveKit) ───────────────────────────────────────────
+
+/** A LiveKit pass to broadcast into the tournament's room (from the NetFun app's server). */
+export async function getBroadcastPass(tournamentId: string): Promise<{ url: string; token: string }> {
+  if (!appUrl) throw new Error("app_url_missing");
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  let res: Response;
+  try {
+    res = await fetch(`${appUrl}/api/live-token`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ tournamentId, publish: true }),
+    });
+  } catch {
+    throw new Error("live_token_unreachable");
+  }
+  const out = (await res.json().catch(() => ({}))) as { url?: string; token?: string; error?: string };
+  if (!res.ok || !out.url || !out.token) throw new Error(out.error || `live_token_${res.status}`);
+  return { url: out.url, token: out.token };
+}
+
+/** Marks the in-app broadcast on/off (viewers' player follows this; on → players notified). */
+export async function setLiveInApp(t: Tournament, on: boolean) {
+  check(
+    await supabase
+      .from("tournaments")
+      .update(
+        on
+          ? {
+              live_in_app: true,
+              status: "live",
+              stream_started_at: t.stream_started_at ?? new Date().toISOString(),
+            }
+          : { live_in_app: false },
+      )
+      .eq("id", t.id),
+  );
 }

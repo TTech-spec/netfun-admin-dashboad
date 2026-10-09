@@ -47,6 +47,7 @@ import {
 } from "@/components/ui";
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
 import { LivestreamCard } from "@/components/LivestreamCard";
+import { InAppBroadcastCard } from "@/components/InAppBroadcastCard";
 import { CommunityInvitesCard } from "@/components/CommunityInvitesCard";
 
 // Which status moves make sense from each status.
@@ -282,6 +283,8 @@ function Sidebar({ t, accepted }: { t: Tournament; accepted: number }) {
           )}
         </div>
       </Card>
+
+      {!["draft", "completed", "cancelled"].includes(t.status) && <InAppBroadcastCard t={t} />}
 
       {t.status !== "draft" && t.status !== "cancelled" && <LivestreamCard t={t} />}
 

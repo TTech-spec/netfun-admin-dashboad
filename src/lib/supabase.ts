@@ -35,6 +35,16 @@ export function friendlyError(err: unknown): string {
     return "Community invites need part-30-tournament-community-invites.sql run in Supabase.";
   if (msg.includes("tournament_not_open"))
     return "Publish the tournament first. Drafts, finished and cancelled tournaments can't take invites.";
+  if (msg.includes("app_url_missing"))
+    return "Set VITE_APP_URL (your NetFun app's address) in the dashboard's Vercel settings, then redeploy.";
+  if (msg.includes("livekit_not_configured"))
+    return "LiveKit isn't set up yet. Add LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET in the app's Vercel settings, then redeploy.";
+  if (msg.includes("live_token_unreachable") || msg.includes("live_token_404"))
+    return "Couldn't reach the NetFun app. Check VITE_APP_URL and that the app's latest version is deployed.";
+  if (msg.includes("live_in_app"))
+    return "In-app streaming needs part-32-in-app-livestream.sql run in Supabase.";
+  if (msg.includes("Permission denied") || msg.includes("NotAllowedError"))
+    return "Your browser blocked the camera/microphone/screen. Allow it in the address bar and try again.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))
