@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { OnlineProvider } from "@/hooks/useOnline";
 import { supabaseConfigured, friendlyError } from "@/lib/supabase";
 import { Layout } from "@/components/Layout";
 import { Button, Spinner } from "@/components/ui";
@@ -49,21 +50,23 @@ function Gate() {
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<OverviewPage />} />
-        <Route path="posts" element={<PostsPage />} />
-        <Route path="communities" element={<CommunitiesPage />} />
-        <Route path="messages" element={<MessagesPage />} />
-        <Route path="messages/:userId" element={<MessagesPage />} />
-        <Route path="tournaments" element={<TournamentsPage />} />
-        <Route path="tournaments/new" element={<TournamentFormPage />} />
-        <Route path="tournaments/:id" element={<TournamentDetailPage />} />
-        <Route path="tournaments/:id/edit" element={<TournamentFormPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <OnlineProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<OverviewPage />} />
+          <Route path="posts" element={<PostsPage />} />
+          <Route path="communities" element={<CommunitiesPage />} />
+          <Route path="messages" element={<MessagesPage />} />
+          <Route path="messages/:userId" element={<MessagesPage />} />
+          <Route path="tournaments" element={<TournamentsPage />} />
+          <Route path="tournaments/new" element={<TournamentFormPage />} />
+          <Route path="tournaments/:id" element={<TournamentDetailPage />} />
+          <Route path="tournaments/:id/edit" element={<TournamentFormPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </OnlineProvider>
   );
 }
 

@@ -4,6 +4,7 @@ import { ChevronRight, Megaphone, Plus, Trophy } from "lucide-react";
 import { bannerUrl, getStats, listTournaments } from "@/lib/api";
 import { dateTime } from "@/lib/format";
 import { Card, ErrorNote, PageHeader, StatusBadge } from "@/components/ui";
+import { OnlineNowCard } from "@/components/OnlineNowCard";
 
 export function OverviewPage() {
   const stats = useQuery({ queryKey: ["stats"], queryFn: getStats });
@@ -42,6 +43,7 @@ export function OverviewPage() {
           </>
         }
       />
+      <OnlineNowCard />
       <ErrorNote error={stats.error} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

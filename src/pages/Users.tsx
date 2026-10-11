@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, Cake, ShieldOff } from "lucide-react";
 import { getUserDetails, listUsers } from "@/lib/api";
+import { useOnline } from "@/hooks/useOnline";
 import { birthdayText, genderText, timeAgo } from "@/lib/format";
 import type { AdminUser } from "@/lib/types";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui";
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
 
-type Filter = "all" | "banned" | "blocked";
+type Filter = "all" | "online" | "banned" | "blocked";
 
 export function UsersPage() {
   const [search, setSearch] = useState("");
@@ -30,6 +31,7 @@ export function UsersPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const online = useOnline();
   const users = useQuery({ queryKey: ["users", debounced], queryFn: () => listUsers(debounced) });
   const ids = (users.data ?? []).map((u) => u.id);
   const details = useQuery({
@@ -39,7 +41,13 @@ export function UsersPage() {
     retry: false,
   });
   const shown = (users.data ?? []).filter((u) =>
-    filter === "banned" ? !!u.banned_at : filter === "blocked" ? !!u.tournament_blocked_at : true,
+    filter === "banned"
+      ? !!u.banned_at
+      : filter === "blocked"
+        ? !!u.tournament_blocked_at
+        : filter === "online"
+          ? online.ids.has(u.id)
+          : true,
   );
 
   const open = (u: AdminUser, action: ModerationTarget["action"]) =>
@@ -65,6 +73,7 @@ export function UsersPage() {
           onChange={setFilter}
           tabs={[
             { value: "all", label: "Everyone" },
+            { value: "online", label: `Online now (${online.ids.size})` },
             { value: "banned", label: "Banned" },
             { value: "blocked", label: "Blocked from tournaments" },
           ]}
@@ -81,11 +90,20 @@ export function UsersPage() {
         <Card className="divide-y divide-nf-line">
           {shown.map((u) => (
             <div key={u.id} className="flex flex-wrap items-center gap-3 p-4">
-              <Avatar profile={u} size={44} />
+              <span className="relative">
+                <Avatar profile={u} size={44} />
+                {online.ids.has(u.id) && (
+                  <span
+                    className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-white bg-[#10B981]"
+                    aria-label="Online now"
+                  />
+                )}
+              </span>
               <div className="min-w-[200px] flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{u.full_name || u.username}</p>
                   {u.is_admin && <Badge tone="purple">Admin</Badge>}
+                  {online.ids.has(u.id) && <Badge tone="green">Online</Badge>}
                   {u.banned_at && <Badge tone="red">Banned {timeAgo(u.banned_at)}</Badge>}
                   {u.tournament_blocked_at && <Badge tone="gold">No tournaments</Badge>}
                 </div>

@@ -555,3 +555,14 @@ export async function listTournamentMessages(tournamentId: string): Promise<Tour
       .limit(20),
   ) as TournamentMessage[];
 }
+
+/** Basic profiles for a list of user ids (e.g. who's online). */
+export async function getProfilesByIds(ids: string[]): Promise<Profile[]> {
+  if (!ids.length) return [];
+  return check(
+    await supabase
+      .from("profiles")
+      .select("id,username,full_name,university,avatar_color,banned_at")
+      .in("id", ids.slice(0, 200)),
+  ) as Profile[];
+}

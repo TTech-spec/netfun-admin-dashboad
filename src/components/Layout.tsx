@@ -12,6 +12,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useOnline } from "@/hooks/useOnline";
 import { getStats, listOfficialThreads } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -29,6 +30,7 @@ export function Layout() {
   const [open, setOpen] = useState(false);
   const stats = useQuery({ queryKey: ["stats"], queryFn: getStats, refetchInterval: 60_000 });
   const pending = stats.data?.pending_entries ?? 0;
+  const online = useOnline();
   const threads = useQuery({
     queryKey: ["official-threads"],
     queryFn: listOfficialThreads,
@@ -80,6 +82,17 @@ export function Layout() {
 
   const footer = (
     <div className="flex flex-col gap-2 border-t border-white/10 pt-4">
+      <span className="flex items-center gap-2 px-2 text-sm font-semibold text-white">
+        <span className="relative flex size-2.5">
+          {online.connected && online.ids.size > 0 && (
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#34D399] opacity-60" />
+          )}
+          <span
+            className={`relative inline-flex size-2.5 rounded-full ${online.connected ? "bg-[#34D399]" : "bg-white/30"}`}
+          />
+        </span>
+        {online.connected ? `${online.ids.size} online now` : "Checking who's online…"}
+      </span>
       <span className="truncate px-2 text-xs text-[#CFC5D9]">{session?.user.email}</span>
       <button
         onClick={signOut}
