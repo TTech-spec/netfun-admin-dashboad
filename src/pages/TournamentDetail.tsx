@@ -48,6 +48,7 @@ import {
 import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
 import { LivestreamCard } from "@/components/LivestreamCard";
 import { InAppBroadcastCard } from "@/components/InAppBroadcastCard";
+import { PlayerStreamsCard } from "@/components/PlayerStreamsCard";
 import { CommunityInvitesCard } from "@/components/CommunityInvitesCard";
 import { MessagePlayersCard } from "@/components/MessagePlayers";
 
@@ -284,6 +285,8 @@ function Sidebar({ t, accepted }: { t: Tournament; accepted: number }) {
           )}
         </div>
       </Card>
+
+      {!["draft", "completed", "cancelled"].includes(t.status) && <PlayerStreamsCard t={t} />}
 
       {!["draft", "completed", "cancelled"].includes(t.status) && <InAppBroadcastCard t={t} />}
 

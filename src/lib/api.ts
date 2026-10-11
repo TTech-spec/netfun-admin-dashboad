@@ -566,3 +566,51 @@ export async function getProfilesByIds(ids: string[]): Promise<Profile[]> {
       .in("id", ids.slice(0, 200)),
   ) as Profile[];
 }
+
+// ─── Players streaming their games (LiveKit, via the app's /api/live-admin) ─
+
+export type LiveStreamer = {
+  identity: string;
+  name: string;
+  userId: string | null;
+  host: boolean;
+  device: "phone" | "computer";
+  tracks: number;
+  joinedAt: number;
+};
+
+async function liveAdmin<T>(body: Record<string, unknown>): Promise<T> {
+  if (!appUrl) throw new Error("app_url_missing");
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  let res: Response;
+  try {
+    res = await fetch(`${appUrl}/api/live-admin`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("live_token_unreachable");
+  }
+  const out = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok || out.error) throw new Error(out.error || `live_token_${res.status}`);
+  return out;
+}
+
+export async function listLiveStreamers(tournamentId: string): Promise<LiveStreamer[]> {
+  return (await liveAdmin<{ streamers: LiveStreamer[] }>({ tournamentId, action: "list" })).streamers;
+}
+
+export async function stopPlayerStream(tournamentId: string, userId: string) {
+  await liveAdmin({ tournamentId, action: "stop", userId });
+}
+
+export async function stopAllPlayerStreams(tournamentId: string) {
+  await liveAdmin({ tournamentId, action: "stop-all" });
+}
+
+export async function setStreamBlocked(entryId: string, blocked: boolean) {
+  check(await supabase.rpc("admin_set_stream_blocked", { p_entry: entryId, p_blocked: blocked }));
+}

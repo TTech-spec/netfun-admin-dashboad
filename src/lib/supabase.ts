@@ -48,6 +48,8 @@ export function friendlyError(err: unknown): string {
   if (msg.includes("admin_message_tournament_players") || msg.includes("tournament_messages"))
     return "Messaging players needs part-33-tournament-player-messages.sql run in Supabase.";
   if (msg.includes("message_length")) return "Write a message (up to 500 characters).";
+  if (msg.includes("admin_set_stream_blocked") || msg.includes("stream_blocked"))
+    return "Player streaming needs part-35-player-streams.sql run in Supabase.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))

@@ -93,6 +93,7 @@ export type TournamentEntry = {
   created_at: string;
   reviewed_at: string | null;
   user: Profile | null;
+  stream_blocked?: boolean;
 };
 
 export type AdminUser = {
