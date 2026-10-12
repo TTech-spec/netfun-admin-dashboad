@@ -135,10 +135,26 @@ export async function setPostPin(postId: string, days: number) {
   );
 }
 
+const isStoragePath = (p: string | null | undefined): p is string => !!p && !/^https?:\/\//.test(p);
+
+function missingFunction(err: unknown) {
+  const e = err as { code?: string; message?: string } | null;
+  return !!e && (e.code === "PGRST202" || /Could not find the function/.test(e.message ?? ""));
+}
+
+/**
+ * Deletes a post for everyone. Uses admin_delete_post() (part-44), which errors
+ * instead of silently deleting nothing; falls back to a checked delete before then.
+ */
 export async function deletePost(post: Pick<Post, "id" | "image_path">) {
-  check(await supabase.from("posts").delete().eq("id", post.id));
+  const res = await supabase.rpc("admin_delete_post", { p_post: post.id });
+  if (res.error && !missingFunction(res.error)) throw res.error;
+  if (res.error) {
+    const rows = check(await supabase.from("posts").delete().eq("id", post.id).select("id"));
+    if (!rows?.length) throw new Error("delete_refused");
+  }
   // Best effort: the post is gone either way. (Cloudinary photos are cleaned up by the app.)
-  if (post.image_path && !/^https?:\/\//.test(post.image_path)) await supabase.storage.from("post-images").remove([post.image_path]);
+  if (isStoragePath(post.image_path)) await supabase.storage.from("post-images").remove([post.image_path]);
 }
 
 export async function listCommunities(): Promise<Community[]> {
@@ -264,9 +280,27 @@ export async function setTournamentStatus(id: string, status: TournamentStatus) 
   check(await supabase.from("tournaments").update({ status }).eq("id", id));
 }
 
+/**
+ * Deletes a tournament with its applications, chat and feed posts, for everyone.
+ * Uses admin_delete_tournament() (part-44); falls back to a checked delete before then.
+ */
 export async function deleteTournament(t: Pick<Tournament, "id" | "banner_path">) {
-  check(await supabase.from("tournaments").delete().eq("id", t.id));
+  let images: string[] = [];
+  const res = await supabase.rpc("admin_delete_tournament", { p_tournament: t.id });
+  if (res.error && !missingFunction(res.error)) throw res.error;
+  if (res.error) {
+    // Older databases keep announcement posts when a tournament goes; remove them first.
+    const posts = check(
+      await supabase.from("posts").delete().eq("tournament_id", t.id).select("image_path"),
+    ) as { image_path: string | null }[];
+    images = posts.map((p) => p.image_path).filter(isStoragePath);
+    const rows = check(await supabase.from("tournaments").delete().eq("id", t.id).select("id"));
+    if (!rows?.length) throw new Error("delete_refused");
+  } else {
+    images = ((res.data as { post_images?: string[] } | null)?.post_images ?? []).filter(isStoragePath);
+  }
   if (t.banner_path) await supabase.storage.from("tournament-banners").remove([t.banner_path]);
+  if (images.length) await supabase.storage.from("post-images").remove(images);
 }
 
 /** Posts a tournament announcement (with its banner) to the home feed. */
