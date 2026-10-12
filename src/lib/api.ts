@@ -15,6 +15,7 @@ import type {
   TournamentEntry,
   TournamentStatus,
   TournamentWithCounts,
+  WaitlistPerson,
 } from "./types";
 
 // Every helper throws on error so react-query can surface it.
@@ -647,4 +648,33 @@ export async function stopAllPlayerStreams(tournamentId: string) {
 
 export async function setStreamBlocked(entryId: string, blocked: boolean) {
   check(await supabase.rpc("admin_set_stream_blocked", { p_entry: entryId, p_blocked: blocked }));
+}
+
+// ─── Waitlist: let people into the full app early (part-52) ──────────────
+
+export async function listWaitlist(
+  search: string,
+  filter: "waiting" | "admitted",
+): Promise<WaitlistPerson[]> {
+  return check(
+    await supabase.rpc("admin_waitlist", { search: search.trim(), filter, lim: 500 }),
+  ) as WaitlistPerson[];
+}
+
+export async function waitlistCounts(): Promise<{ waiting: number; admitted: number }> {
+  return check(await supabase.rpc("admin_waitlist_counts")) as { waiting: number; admitted: number };
+}
+
+/** Lets these people into the full app now. Returns how many were let in. */
+export async function admitFromWaitlist(ids: string[]): Promise<number> {
+  return check(await supabase.rpc("admin_admit", { ids })) as number;
+}
+
+export async function admitEveryone(): Promise<number> {
+  return check(await supabase.rpc("admin_admit_all")) as number;
+}
+
+/** Puts people back on the waitlist (undo). */
+export async function sendBackToWaitlist(ids: string[]): Promise<number> {
+  return check(await supabase.rpc("admin_unadmit", { ids })) as number;
 }

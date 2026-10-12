@@ -63,6 +63,8 @@ export function friendlyError(err: unknown): string {
     return "Run part-11-admin-verified-official.sql from the app repo on Supabase first.";
   if (msg.includes("posts_official_fields_ok"))
     return "Check the title (max 80), button text (max 30) and link (an app page like /chats or https://…).";
+  if (/admin_waitlist|admin_admit|admin_unadmit/.test(msg))
+    return "Run part-52-admin-waitlist.sql from the app repo in Supabase first.";
   if (msg.includes("Could not find the function") || msg.includes("does not exist"))
     return "The admin SQL hasn't been run on Supabase yet (supabase/admin_tournaments.sql).";
   if (msg.includes("Bucket not found"))

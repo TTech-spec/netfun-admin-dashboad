@@ -162,3 +162,18 @@ export type TournamentInvite = {
   responded_at: string | null;
   community: { id: string; name: string; slug: string; theme_color: string } | null;
 };
+
+export type WaitlistPerson = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  email: string;
+  avatar_color: string;
+  university: string;
+  joined_at: string;
+  line_number: number | null;
+  admitted_at: string | null;
+  referrals: number;
+  goal: "network" | "earn" | null;
+  expectations: string[];
+};

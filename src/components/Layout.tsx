@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   BadgeCheck,
+  DoorOpen,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/messages", label: "Messages", icon: MessageCircle },
   { to: "/tournaments", label: "Tournaments", icon: Trophy },
   { to: "/users", label: "Users", icon: Users },
+  { to: "/waitlist", label: "Waitlist", icon: DoorOpen },
 ];
 
 export function Layout() {
