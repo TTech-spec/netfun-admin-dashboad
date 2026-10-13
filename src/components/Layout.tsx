@@ -9,12 +9,13 @@ import {
   Megaphone,
   Menu,
   MessageCircle,
+  MessageSquareHeart,
   Trophy,
   Users,
   X,
 } from "lucide-react";
 import { useOnline } from "@/hooks/useOnline";
-import { getStats, listOfficialThreads } from "@/lib/api";
+import { getStats, listFeedback, listOfficialThreads } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
@@ -25,12 +26,17 @@ const NAV = [
   { to: "/tournaments", label: "Tournaments", icon: Trophy },
   { to: "/users", label: "Users", icon: Users },
   { to: "/waitlist", label: "Waitlist", icon: DoorOpen },
+  { to: "/feedback", label: "Feedback", icon: MessageSquareHeart },
 ];
 
 export function Layout() {
   const { session, signOut } = useAuth();
   const [open, setOpen] = useState(false);
-  const stats = useQuery({ queryKey: ["stats"], queryFn: getStats, refetchInterval: 60_000 });
+  const stats = useQuery({
+    queryKey: ["stats"],
+    queryFn: getStats,
+    refetchInterval: 60_000,
+  });
   const pending = stats.data?.pending_entries ?? 0;
   const online = useOnline();
   const threads = useQuery({
@@ -39,7 +45,17 @@ export function Layout() {
     refetchInterval: 60_000,
     retry: false,
   });
-  const unreadReplies = (threads.data ?? []).reduce((n, t) => n + Number(t.unread || 0), 0);
+  const feedback = useQuery({
+    queryKey: ["feedback"],
+    queryFn: listFeedback,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const newFeedback = (feedback.data ?? []).filter((f) => !f.done_at).length;
+  const unreadReplies = (threads.data ?? []).reduce(
+    (n, t) => n + Number(t.unread || 0),
+    0,
+  );
 
   const nav = (
     <nav aria-label="Admin" className="flex flex-col gap-1">
@@ -51,7 +67,9 @@ export function Layout() {
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
             `flex h-11 items-center gap-3 rounded-full px-4 text-[15px] font-semibold transition ${
-              isActive ? "bg-white/12 text-white" : "text-[#CFC5D9] hover:bg-white/6 hover:text-white"
+              isActive
+                ? "bg-white/12 text-white"
+                : "text-[#CFC5D9] hover:bg-white/6 hover:text-white"
             }`
           }
         >
@@ -60,6 +78,11 @@ export function Layout() {
           {to === "/tournaments" && pending > 0 && (
             <span className="rounded-full bg-nf-gold px-2 py-0.5 text-xs font-bold text-nf-plum">
               {pending}
+            </span>
+          )}
+          {to === "/feedback" && newFeedback > 0 && (
+            <span className="rounded-full bg-nf-gold px-2 py-0.5 text-xs font-bold text-nf-plum">
+              {newFeedback}
             </span>
           )}
           {to === "/messages" && unreadReplies > 0 && (
@@ -75,7 +98,9 @@ export function Layout() {
   const brand = (
     <div className="flex items-center gap-2 px-2">
       <img src="/logo.png" alt="" className="h-8 w-12 object-cover" />
-      <span className="font-display text-xl font-extrabold tracking-tight text-white">NetFun</span>
+      <span className="font-display text-xl font-extrabold tracking-tight text-white">
+        NetFun
+      </span>
       <span className="rounded-full bg-nf-gold px-2 py-0.5 text-[10px] font-bold tracking-wider text-nf-plum uppercase">
         Admin
       </span>
@@ -93,9 +118,13 @@ export function Layout() {
             className={`relative inline-flex size-2.5 rounded-full ${online.connected ? "bg-[#34D399]" : "bg-white/30"}`}
           />
         </span>
-        {online.connected ? `${online.ids.size} online now` : "Checking who's online…"}
+        {online.connected
+          ? `${online.ids.size} online now`
+          : "Checking who's online…"}
       </span>
-      <span className="truncate px-2 text-xs text-[#CFC5D9]">{session?.user.email}</span>
+      <span className="truncate px-2 text-xs text-[#CFC5D9]">
+        {session?.user.email}
+      </span>
       <button
         onClick={signOut}
         className="flex h-10 items-center gap-3 rounded-full px-4 text-sm font-semibold text-[#CFC5D9] hover:bg-white/6 hover:text-white"
@@ -124,7 +153,10 @@ export function Layout() {
         </button>
       </header>
       {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => setOpen(false)}
+        >
           <div className="absolute inset-0 bg-black/40" />
           <aside
             className="absolute inset-y-0 left-0 flex w-72 flex-col gap-8 bg-nf-plum p-4"
@@ -132,7 +164,11 @@ export function Layout() {
           >
             <div className="flex items-center justify-between">
               {brand}
-              <button onClick={() => setOpen(false)} aria-label="Close menu" className="text-white">
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close menu"
+                className="text-white"
+              >
                 <X className="size-6" />
               </button>
             </div>

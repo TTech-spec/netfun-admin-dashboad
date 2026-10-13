@@ -14,6 +14,7 @@ import { TournamentFormPage } from "@/pages/TournamentForm";
 import { TournamentDetailPage } from "@/pages/TournamentDetail";
 import { UsersPage } from "@/pages/Users";
 import { WaitlistPage } from "@/pages/Waitlist";
+import { FeedbackPage } from "@/pages/Feedback";
 
 function Gate() {
   const { ready, session, isAdmin, adminError, recovery, signOut } = useAuth();
@@ -23,9 +24,13 @@ function Gate() {
       <AuthScreen>
         <h1 className="font-display text-2xl font-bold">Connect Supabase</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-nf-soft-ink">
-          Set <code className="rounded bg-nf-field px-1">VITE_SUPABASE_URL</code> and{" "}
-          <code className="rounded bg-nf-field px-1">VITE_SUPABASE_ANON_KEY</code> to the same
-          project the NetFun app uses, then redeploy.
+          Set{" "}
+          <code className="rounded bg-nf-field px-1">VITE_SUPABASE_URL</code>{" "}
+          and{" "}
+          <code className="rounded bg-nf-field px-1">
+            VITE_SUPABASE_ANON_KEY
+          </code>{" "}
+          to the same project the NetFun app uses, then redeploy.
         </p>
       </AuthScreen>
     );
@@ -65,6 +70,7 @@ function Gate() {
           <Route path="tournaments/:id/edit" element={<TournamentFormPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="waitlist" element={<WaitlistPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

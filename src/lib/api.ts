@@ -16,6 +16,7 @@ import type {
   TournamentStatus,
   TournamentWithCounts,
   WaitlistPerson,
+  Feedback,
 } from "./types";
 
 // Every helper throws on error so react-query can surface it.
@@ -33,7 +34,9 @@ async function requireUserId(): Promise<string> {
 
 function fileExt(file: File | Blob, fallback = "jpg") {
   const name = file instanceof File ? file.name : "";
-  return name.split(".").pop()?.toLowerCase() || file.type.split("/")[1] || fallback;
+  return (
+    name.split(".").pop()?.toLowerCase() || file.type.split("/")[1] || fallback
+  );
 }
 
 // ─── Admin check & stats ──────────────────────────────────────────────────
@@ -58,7 +61,9 @@ type RawPost = Omit<Post, "like_count" | "comment_count"> & {
   post_comments: { count: number }[];
 };
 
-export async function listPosts(opts: { officialOnly?: boolean; limit?: number } = {}) {
+export async function listPosts(
+  opts: { officialOnly?: boolean; limit?: number } = {},
+) {
   let q = supabase
     .from("posts")
     .select(POST_SELECT)
@@ -79,7 +84,10 @@ export function postImageUrl(path: string): string {
   return supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
 }
 
-async function uploadPostImage(me: string, image: File | Blob): Promise<string> {
+async function uploadPostImage(
+  me: string,
+  image: File | Blob,
+): Promise<string> {
   const path = `${me}/${crypto.randomUUID()}.${fileExt(image)}`;
   check(
     await supabase.storage
@@ -103,7 +111,9 @@ export async function createOfficialPost(input: {
   pinDays?: number;
 }) {
   const me = await requireUserId();
-  const image_path = input.image ? await uploadPostImage(me, input.image) : null;
+  const image_path = input.image
+    ? await uploadPostImage(me, input.image)
+    : null;
   check(
     await supabase.from("posts").insert({
       author_id: me,
@@ -116,7 +126,9 @@ export async function createOfficialPost(input: {
       image_path,
       // Only sent when used, so plain posts still work before part-11 is run.
       ...(input.headline?.trim() ? { headline: input.headline.trim() } : {}),
-      ...(input.cta ? { cta_label: input.cta.label.trim(), cta_url: input.cta.url.trim() } : {}),
+      ...(input.cta
+        ? { cta_label: input.cta.label.trim(), cta_url: input.cta.url.trim() }
+        : {}),
       ...(input.pinDays ? { pinned_until: pinUntil(input.pinDays) } : {}),
     }),
   );
@@ -136,11 +148,16 @@ export async function setPostPin(postId: string, days: number) {
   );
 }
 
-const isStoragePath = (p: string | null | undefined): p is string => !!p && !/^https?:\/\//.test(p);
+const isStoragePath = (p: string | null | undefined): p is string =>
+  !!p && !/^https?:\/\//.test(p);
 
 function missingFunction(err: unknown) {
   const e = err as { code?: string; message?: string } | null;
-  return !!e && (e.code === "PGRST202" || /Could not find the function/.test(e.message ?? ""));
+  return (
+    !!e &&
+    (e.code === "PGRST202" ||
+      /Could not find the function/.test(e.message ?? ""))
+  );
 }
 
 /**
@@ -151,11 +168,14 @@ export async function deletePost(post: Pick<Post, "id" | "image_path">) {
   const res = await supabase.rpc("admin_delete_post", { p_post: post.id });
   if (res.error && !missingFunction(res.error)) throw res.error;
   if (res.error) {
-    const rows = check(await supabase.from("posts").delete().eq("id", post.id).select("id"));
+    const rows = check(
+      await supabase.from("posts").delete().eq("id", post.id).select("id"),
+    );
     if (!rows?.length) throw new Error("delete_refused");
   }
   // Best effort: the post is gone either way. (Cloudinary photos are cleaned up by the app.)
-  if (isStoragePath(post.image_path)) await supabase.storage.from("post-images").remove([post.image_path]);
+  if (isStoragePath(post.image_path))
+    await supabase.storage.from("post-images").remove([post.image_path]);
 }
 
 export async function listCommunities(): Promise<Community[]> {
@@ -191,16 +211,23 @@ export async function listCommunitiesForReview(): Promise<ReviewCommunity[]> {
 }
 
 /** Verified communities get a purple Verified tag and their posts show on everyone's Home. */
-export async function setCommunityVerified(communityId: string, verified: boolean) {
+export async function setCommunityVerified(
+  communityId: string,
+  verified: boolean,
+) {
   check(
-    await supabase.rpc("admin_set_verified", { p_community: communityId, p_verified: verified }),
+    await supabase.rpc("admin_set_verified", {
+      p_community: communityId,
+      p_verified: verified,
+    }),
   );
 }
 
 // ─── Tournaments ──────────────────────────────────────────────────────────
 
 export function bannerUrl(path: string): string {
-  return supabase.storage.from("tournament-banners").getPublicUrl(path).data.publicUrl;
+  return supabase.storage.from("tournament-banners").getPublicUrl(path).data
+    .publicUrl;
 }
 
 async function uploadBanner(tournamentId: string, file: File): Promise<string> {
@@ -221,8 +248,14 @@ export async function listTournaments(): Promise<TournamentWithCounts[]> {
       .order("created_at", { ascending: false }),
   ) as (Tournament & { tournament_entries: { status: EntryStatus }[] })[];
   return rows.map(({ tournament_entries, ...t }) => {
-    const n = (s: EntryStatus) => tournament_entries.filter((e) => e.status === s).length;
-    return { ...t, pending: n("pending"), accepted: n("accepted"), rejected: n("rejected") };
+    const n = (s: EntryStatus) =>
+      tournament_entries.filter((e) => e.status === s).length;
+    return {
+      ...t,
+      pending: n("pending"),
+      accepted: n("accepted"),
+      rejected: n("rejected"),
+    };
   });
 }
 
@@ -250,7 +283,12 @@ export type TournamentInput = Pick<
 /** Creates or updates a tournament. A new banner file replaces the old one. */
 export async function saveTournament(
   input: TournamentInput,
-  opts: { id?: string; banner?: File | null; removeBanner?: boolean; previousBanner?: string | null },
+  opts: {
+    id?: string;
+    banner?: File | null;
+    removeBanner?: boolean;
+    previousBanner?: string | null;
+  },
 ): Promise<Tournament> {
   const me = await requireUserId();
   const id = opts.id ?? crypto.randomUUID();
@@ -258,10 +296,18 @@ export async function saveTournament(
   if (opts.banner) banner_path = await uploadBanner(id, opts.banner);
   else if (opts.removeBanner) banner_path = null;
 
-  const row = { ...input, ...(banner_path !== undefined ? { banner_path } : {}) };
+  const row = {
+    ...input,
+    ...(banner_path !== undefined ? { banner_path } : {}),
+  };
   const saved = opts.id
     ? (check(
-        await supabase.from("tournaments").update(row).eq("id", id).select("*").single(),
+        await supabase
+          .from("tournaments")
+          .update(row)
+          .eq("id", id)
+          .select("*")
+          .single(),
       ) as Tournament)
     : (check(
         await supabase
@@ -271,13 +317,22 @@ export async function saveTournament(
           .single(),
       ) as Tournament);
 
-  if (banner_path !== undefined && opts.previousBanner && opts.previousBanner !== banner_path) {
-    await supabase.storage.from("tournament-banners").remove([opts.previousBanner]);
+  if (
+    banner_path !== undefined &&
+    opts.previousBanner &&
+    opts.previousBanner !== banner_path
+  ) {
+    await supabase.storage
+      .from("tournament-banners")
+      .remove([opts.previousBanner]);
   }
   return saved;
 }
 
-export async function setTournamentStatus(id: string, status: TournamentStatus) {
+export async function setTournamentStatus(
+  id: string,
+  status: TournamentStatus,
+) {
   check(await supabase.from("tournaments").update({ status }).eq("id", id));
 }
 
@@ -285,22 +340,35 @@ export async function setTournamentStatus(id: string, status: TournamentStatus) 
  * Deletes a tournament with its applications, chat and feed posts, for everyone.
  * Uses admin_delete_tournament() (part-44); falls back to a checked delete before then.
  */
-export async function deleteTournament(t: Pick<Tournament, "id" | "banner_path">) {
+export async function deleteTournament(
+  t: Pick<Tournament, "id" | "banner_path">,
+) {
   let images: string[] = [];
-  const res = await supabase.rpc("admin_delete_tournament", { p_tournament: t.id });
+  const res = await supabase.rpc("admin_delete_tournament", {
+    p_tournament: t.id,
+  });
   if (res.error && !missingFunction(res.error)) throw res.error;
   if (res.error) {
     // Older databases keep announcement posts when a tournament goes; remove them first.
     const posts = check(
-      await supabase.from("posts").delete().eq("tournament_id", t.id).select("image_path"),
+      await supabase
+        .from("posts")
+        .delete()
+        .eq("tournament_id", t.id)
+        .select("image_path"),
     ) as { image_path: string | null }[];
     images = posts.map((p) => p.image_path).filter(isStoragePath);
-    const rows = check(await supabase.from("tournaments").delete().eq("id", t.id).select("id"));
+    const rows = check(
+      await supabase.from("tournaments").delete().eq("id", t.id).select("id"),
+    );
     if (!rows?.length) throw new Error("delete_refused");
   } else {
-    images = ((res.data as { post_images?: string[] } | null)?.post_images ?? []).filter(isStoragePath);
+    images = (
+      (res.data as { post_images?: string[] } | null)?.post_images ?? []
+    ).filter(isStoragePath);
   }
-  if (t.banner_path) await supabase.storage.from("tournament-banners").remove([t.banner_path]);
+  if (t.banner_path)
+    await supabase.storage.from("tournament-banners").remove([t.banner_path]);
   if (images.length) await supabase.storage.from("post-images").remove(images);
 }
 
@@ -308,7 +376,9 @@ export async function deleteTournament(t: Pick<Tournament, "id" | "banner_path">
 export async function announceTournament(t: Tournament, body: string) {
   let image: Blob | null = null;
   if (t.banner_path) {
-    const res = await supabase.storage.from("tournament-banners").download(t.banner_path);
+    const res = await supabase.storage
+      .from("tournament-banners")
+      .download(t.banner_path);
     if (!res.error) image = res.data;
   }
   await createOfficialPost({ body, image, tournamentId: t.id });
@@ -346,7 +416,9 @@ export async function postStream(
 ) {
   let image: Blob | null = null;
   if (t.banner_path) {
-    const res = await supabase.storage.from("tournament-banners").download(t.banner_path);
+    const res = await supabase.storage
+      .from("tournament-banners")
+      .download(t.banner_path);
     if (!res.error) image = res.data;
   }
   await createOfficialPost({
@@ -378,10 +450,17 @@ export async function deleteChatMessage(id: string) {
 }
 
 export async function removeStream(tournamentId: string) {
-  check(await supabase.from("tournaments").update({ stream_url: null }).eq("id", tournamentId));
+  check(
+    await supabase
+      .from("tournaments")
+      .update({ stream_url: null })
+      .eq("id", tournamentId),
+  );
 }
 
-export async function listEntries(tournamentId: string): Promise<TournamentEntry[]> {
+export async function listEntries(
+  tournamentId: string,
+): Promise<TournamentEntry[]> {
   return check(
     await supabase
       .from("tournament_entries")
@@ -393,7 +472,11 @@ export async function listEntries(tournamentId: string): Promise<TournamentEntry
   ) as TournamentEntry[];
 }
 
-export async function reviewEntry(entryId: string, status: EntryStatus, note = "") {
+export async function reviewEntry(
+  entryId: string,
+  status: EntryStatus,
+  note = "",
+) {
   check(
     await supabase.rpc("review_tournament_entry", {
       entry_id: entryId,
@@ -421,11 +504,16 @@ export type UserDetails = { birth_date: string | null; gender: string | null };
  * Date of birth and gender from sign-up (admins only), by user id.
  * Falls back to dates of birth only if part-31 hasn't been run yet.
  */
-export async function getUserDetails(ids: string[]): Promise<Record<string, UserDetails>> {
+export async function getUserDetails(
+  ids: string[],
+): Promise<Record<string, UserDetails>> {
   if (!ids.length) return {};
   type Row = { id: string; birth_date: string | null; gender?: string | null };
   let res = await supabase.rpc("admin_user_details", { ids });
-  if (res.error && /admin_user_details|does not exist|Could not find/.test(res.error.message)) {
+  if (
+    res.error &&
+    /admin_user_details|does not exist|Could not find/.test(res.error.message)
+  ) {
     res = await supabase.rpc("admin_user_birthdates", { ids });
   }
   if (res.error) throw res.error;
@@ -436,20 +524,31 @@ export async function getUserDetails(ids: string[]): Promise<Record<string, User
 }
 
 export async function setBan(userId: string, banned: boolean, reason = "") {
-  check(await supabase.rpc("admin_set_ban", { target: userId, banned, reason }));
+  check(
+    await supabase.rpc("admin_set_ban", { target: userId, banned, reason }),
+  );
 }
 
 export async function setTournamentBlock(userId: string, blocked: boolean) {
-  check(await supabase.rpc("admin_set_tournament_block", { target: userId, blocked }));
+  check(
+    await supabase.rpc("admin_set_tournament_block", {
+      target: userId,
+      blocked,
+    }),
+  );
 }
 
 // ─── NetFun Official messages to community owners ─────────────────────────
 
 export async function listOfficialThreads(): Promise<OfficialThread[]> {
-  return check(await supabase.rpc("admin_official_threads")) as OfficialThread[];
+  return check(
+    await supabase.rpc("admin_official_threads"),
+  ) as OfficialThread[];
 }
 
-export async function listOfficialThread(userId: string): Promise<OfficialMessage[]> {
+export async function listOfficialThread(
+  userId: string,
+): Promise<OfficialMessage[]> {
   return check(
     await supabase
       .from("official_messages")
@@ -460,9 +559,15 @@ export async function listOfficialThread(userId: string): Promise<OfficialMessag
   ) as OfficialMessage[];
 }
 
-export async function sendOfficialMessage(userId: string, body: string): Promise<OfficialMessage> {
+export async function sendOfficialMessage(
+  userId: string,
+  body: string,
+): Promise<OfficialMessage> {
   return check(
-    await supabase.rpc("admin_send_official_message", { target: userId, msg: body.trim() }),
+    await supabase.rpc("admin_send_official_message", {
+      target: userId,
+      msg: body.trim(),
+    }),
   ) as OfficialMessage;
 }
 
@@ -476,7 +581,9 @@ export async function getProfileWithCommunities(
   return check(
     await supabase
       .from("profiles")
-      .select("id,username,full_name,university,avatar_color,banned_at, communities!communities_created_by_fkey(id,name)")
+      .select(
+        "id,username,full_name,university,avatar_color,banned_at, communities!communities_created_by_fkey(id,name)",
+      )
       .eq("id", userId)
       .maybeSingle(),
   ) as (Profile & { communities: { id: string; name: string }[] }) | null;
@@ -484,7 +591,9 @@ export async function getProfileWithCommunities(
 
 // ─── Communities invited to a tournament ──────────────────────────────────
 
-export async function listTournamentInvites(tournamentId: string): Promise<TournamentInvite[]> {
+export async function listTournamentInvites(
+  tournamentId: string,
+): Promise<TournamentInvite[]> {
   return check(
     await supabase
       .from("tournament_community_invites")
@@ -495,7 +604,11 @@ export async function listTournamentInvites(tournamentId: string): Promise<Tourn
 }
 
 /** Invites the communities' owners; returns how many invites went out. */
-export async function inviteCommunities(tournamentId: string, communityIds: string[], message: string) {
+export async function inviteCommunities(
+  tournamentId: string,
+  communityIds: string[],
+  message: string,
+) {
   return check(
     await supabase.rpc("admin_invite_communities", {
       p_tournament: tournamentId,
@@ -506,13 +619,17 @@ export async function inviteCommunities(tournamentId: string, communityIds: stri
 }
 
 export async function removeInvite(inviteId: string) {
-  check(await supabase.rpc("admin_remove_community_invite", { p_invite: inviteId }));
+  check(
+    await supabase.rpc("admin_remove_community_invite", { p_invite: inviteId }),
+  );
 }
 
 // ─── In-app broadcast (LiveKit) ───────────────────────────────────────────
 
 /** A LiveKit pass to broadcast into the tournament's room (from the NetFun app's server). */
-export async function getBroadcastPass(tournamentId: string): Promise<{ url: string; token: string }> {
+export async function getBroadcastPass(
+  tournamentId: string,
+): Promise<{ url: string; token: string }> {
   if (!appUrl) throw new Error("app_url_missing");
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -521,14 +638,22 @@ export async function getBroadcastPass(tournamentId: string): Promise<{ url: str
   try {
     res = await fetch(`${appUrl}/api/live-token`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ tournamentId, publish: true }),
     });
   } catch {
     throw new Error("live_token_unreachable");
   }
-  const out = (await res.json().catch(() => ({}))) as { url?: string; token?: string; error?: string };
-  if (!res.ok || !out.url || !out.token) throw new Error(out.error || `live_token_${res.status}`);
+  const out = (await res.json().catch(() => ({}))) as {
+    url?: string;
+    token?: string;
+    error?: string;
+  };
+  if (!res.ok || !out.url || !out.token)
+    throw new Error(out.error || `live_token_${res.status}`);
   return { url: out.url, token: out.token };
 }
 
@@ -542,7 +667,8 @@ export async function setLiveInApp(t: Tournament, on: boolean) {
           ? {
               live_in_app: true,
               status: "live",
-              stream_started_at: t.stream_started_at ?? new Date().toISOString(),
+              stream_started_at:
+                t.stream_started_at ?? new Date().toISOString(),
             }
           : { live_in_app: false },
       )
@@ -552,7 +678,12 @@ export async function setLiveInApp(t: Tournament, on: boolean) {
 
 // ─── Messages to a tournament's players ──────────────────────────────────
 
-export type PlayerAudience = "everyone" | "accepted" | "pending" | "rejected" | "chosen";
+export type PlayerAudience =
+  | "everyone"
+  | "accepted"
+  | "pending"
+  | "rejected"
+  | "chosen";
 
 export type TournamentMessage = {
   id: string;
@@ -566,21 +697,30 @@ export type TournamentMessage = {
 /** Sends a NetFun notification to the chosen players. Returns how many got it. */
 export async function messagePlayers(
   tournamentId: string,
-  input: { message: string; audience: PlayerAudience; userIds?: string[]; live?: boolean },
+  input: {
+    message: string;
+    audience: PlayerAudience;
+    userIds?: string[];
+    live?: boolean;
+  },
 ): Promise<number> {
   return check(
     await supabase.rpc("admin_message_tournament_players", {
       p_tournament: tournamentId,
       p_message: input.message.trim(),
       p_statuses:
-        input.audience === "everyone" || input.audience === "chosen" ? null : [input.audience],
+        input.audience === "everyone" || input.audience === "chosen"
+          ? null
+          : [input.audience],
       p_users: input.audience === "chosen" ? (input.userIds ?? []) : null,
       p_live: !!input.live,
     }),
   ) as number;
 }
 
-export async function listTournamentMessages(tournamentId: string): Promise<TournamentMessage[]> {
+export async function listTournamentMessages(
+  tournamentId: string,
+): Promise<TournamentMessage[]> {
   return check(
     await supabase
       .from("tournament_messages")
@@ -623,19 +763,30 @@ async function liveAdmin<T>(body: Record<string, unknown>): Promise<T> {
   try {
     res = await fetch(`${appUrl}/api/live-admin`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(body),
     });
   } catch {
     throw new Error("live_token_unreachable");
   }
   const out = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok || out.error) throw new Error(out.error || `live_token_${res.status}`);
+  if (!res.ok || out.error)
+    throw new Error(out.error || `live_token_${res.status}`);
   return out;
 }
 
-export async function listLiveStreamers(tournamentId: string): Promise<LiveStreamer[]> {
-  return (await liveAdmin<{ streamers: LiveStreamer[] }>({ tournamentId, action: "list" })).streamers;
+export async function listLiveStreamers(
+  tournamentId: string,
+): Promise<LiveStreamer[]> {
+  return (
+    await liveAdmin<{ streamers: LiveStreamer[] }>({
+      tournamentId,
+      action: "list",
+    })
+  ).streamers;
 }
 
 export async function stopPlayerStream(tournamentId: string, userId: string) {
@@ -647,7 +798,12 @@ export async function stopAllPlayerStreams(tournamentId: string) {
 }
 
 export async function setStreamBlocked(entryId: string, blocked: boolean) {
-  check(await supabase.rpc("admin_set_stream_blocked", { p_entry: entryId, p_blocked: blocked }));
+  check(
+    await supabase.rpc("admin_set_stream_blocked", {
+      p_entry: entryId,
+      p_blocked: blocked,
+    }),
+  );
 }
 
 // ─── Waitlist: let people into the full app early (part-52) ──────────────
@@ -657,12 +813,22 @@ export async function listWaitlist(
   filter: "waiting" | "admitted",
 ): Promise<WaitlistPerson[]> {
   return check(
-    await supabase.rpc("admin_waitlist", { search: search.trim(), filter, lim: 500 }),
+    await supabase.rpc("admin_waitlist", {
+      search: search.trim(),
+      filter,
+      lim: 500,
+    }),
   ) as WaitlistPerson[];
 }
 
-export async function waitlistCounts(): Promise<{ waiting: number; admitted: number }> {
-  return check(await supabase.rpc("admin_waitlist_counts")) as { waiting: number; admitted: number };
+export async function waitlistCounts(): Promise<{
+  waiting: number;
+  admitted: number;
+}> {
+  return check(await supabase.rpc("admin_waitlist_counts")) as {
+    waiting: number;
+    admitted: number;
+  };
 }
 
 /** Lets these people into the full app now. Returns how many were let in. */
@@ -677,4 +843,35 @@ export async function admitEveryone(): Promise<number> {
 /** Puts people back on the waitlist (undo). */
 export async function sendBackToWaitlist(ids: string[]): Promise<number> {
   return check(await supabase.rpc("admin_unadmit", { ids })) as number;
+}
+
+// ─── Feedback from the app's Feedback button (part-64, part-65) ──────────
+
+export async function listFeedback(): Promise<Feedback[]> {
+  return check(
+    await supabase
+      .from("feedback")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500),
+  ) as Feedback[];
+}
+
+/** Marks feedback as done, or reopens it. */
+export async function setFeedbackDone(id: string, done: boolean) {
+  const rows = check(
+    await supabase
+      .from("feedback")
+      .update({ done_at: done ? new Date().toISOString() : null })
+      .eq("id", id)
+      .select("id"),
+  ) as { id: string }[];
+  if (!rows.length) throw new Error("feedback_admin_missing");
+}
+
+export async function deleteFeedback(id: string) {
+  const rows = check(
+    await supabase.from("feedback").delete().eq("id", id).select("id"),
+  ) as { id: string }[];
+  if (!rows.length) throw new Error("feedback_admin_missing");
 }

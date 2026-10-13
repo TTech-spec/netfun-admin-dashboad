@@ -177,3 +177,13 @@ export type WaitlistPerson = {
   goal: "network" | "earn" | null;
   expectations: string[];
 };
+
+export type Feedback = {
+  id: string;
+  user_id: string | null;
+  rating: number | null;
+  message: string | null;
+  page: string | null;
+  created_at: string;
+  done_at?: string | null;
+};
