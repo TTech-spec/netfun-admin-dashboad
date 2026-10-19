@@ -1,6 +1,14 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Heart, MessageCircle, Pin, PinOff, Trash2, Trophy } from "lucide-react";
+import {
+  BadgeCheck,
+  Heart,
+  MessageCircle,
+  Pin,
+  PinOff,
+  Trash2,
+  Trophy,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   createOfficialPost,
@@ -10,10 +18,12 @@ import {
   listTournaments,
   postImageUrl,
   setPostPin,
+  takeDownPost,
 } from "@/lib/api";
 import { friendlyError } from "@/lib/supabase";
 import { dateTime, timeAgo } from "@/lib/format";
-import type { Post } from "@/lib/types";
+import type { Post, PostAudience } from "@/lib/types";
+import { AudiencePicker, audienceText } from "@/components/AudiencePicker";
 import {
   Avatar,
   Badge,
@@ -28,7 +38,10 @@ import {
   Spinner,
   Tabs,
 } from "@/components/ui";
-import { ModerationDialog, type ModerationTarget } from "@/components/ModerationDialog";
+import {
+  ModerationDialog,
+  type ModerationTarget,
+} from "@/components/ModerationDialog";
 
 const MAX_BODY = 2000;
 
@@ -51,9 +64,20 @@ const BUTTON_TARGETS = [
 
 export function PostsPage() {
   const [filter, setFilter] = useState<"official" | "all">("official");
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
   const posts = useQuery({
-    queryKey: ["posts", filter],
-    queryFn: () => listPosts({ officialOnly: filter === "official", limit: 60 }),
+    queryKey: ["posts", filter, debounced],
+    queryFn: () =>
+      listPosts({
+        officialOnly: filter === "official",
+        limit: 150,
+        search: debounced,
+      }),
   });
   const [toDelete, setToDelete] = useState<Post | null>(null);
   const [moderate, setModerate] = useState<ModerationTarget | null>(null);
@@ -73,16 +97,32 @@ export function PostsPage() {
             onChange={setFilter}
             tabs={[
               { value: "official", label: "Official posts" },
-              { value: "all", label: "All posts (moderation)" },
+              { value: "all", label: "Everyone's posts (take down)" },
             ]}
+          />
+          <input
+            className="input"
+            type="search"
+            placeholder="Search posts by text or @username…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search posts"
           />
           <ErrorNote error={posts.error} />
           {posts.isLoading && <Spinner />}
           {posts.data?.length === 0 && (
             <Card>
               <EmptyState
-                title={filter === "official" ? "No official posts yet" : "No posts yet"}
-                body={filter === "official" ? "Write your first announcement on the left." : undefined}
+                title={
+                  filter === "official"
+                    ? "No official posts yet"
+                    : "No posts yet"
+                }
+                body={
+                  filter === "official"
+                    ? "Write your first announcement on the left."
+                    : undefined
+                }
               />
             </Card>
           )}
@@ -96,7 +136,7 @@ export function PostsPage() {
                   ? () =>
                       setModerate({
                         id: p.author!.id,
-                        name: p.author!.full_name || p.author!.username,
+                        name: p.author!.username,
                         action: "ban",
                       })
                   : undefined
@@ -124,15 +164,26 @@ function Composer() {
   const [ctaTarget, setCtaTarget] = useState("/chats");
   const [ctaCustom, setCtaCustom] = useState("");
   const [pinDays, setPinDays] = useState(0);
+  const [audience, setAudience] = useState<PostAudience | null>(null);
+  const [resetKey, setResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
+  const audienceOk = audience === null || Object.keys(audience).length > 0;
   const ctaUrl = ctaTarget === "custom" ? ctaCustom.trim() : ctaTarget;
-  const ctaOk = !withButton || (ctaLabel.trim().length > 0 && /^(\/|https:\/\/)\S*$/.test(ctaUrl));
-  const communities = useQuery({ queryKey: ["communities"], queryFn: listCommunities });
-  const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: listTournaments });
+  const ctaOk =
+    !withButton ||
+    (ctaLabel.trim().length > 0 && /^(\/|https:\/\/)\S*$/.test(ctaUrl));
+  const communities = useQuery({
+    queryKey: ["communities"],
+    queryFn: listCommunities,
+  });
+  const tournaments = useQuery({
+    queryKey: ["tournaments"],
+    queryFn: listTournaments,
+  });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!body.trim() || !ctaOk) return;
+    if (!body.trim() || !ctaOk || !audienceOk) return;
     setBusy(true);
     try {
       await createOfficialPost({
@@ -143,8 +194,17 @@ function Composer() {
         headline,
         cta: withButton ? { label: ctaLabel, url: ctaUrl } : null,
         pinDays,
+        audience,
       });
-      toast.success(pinDays ? "Posted and pinned to the top of Home" : "Posted to the home feed");
+      toast.success(
+        audience
+          ? `Posted. Only ${audienceText(audience)} will see it.`
+          : pinDays
+            ? "Posted and pinned to the top of Home"
+            : "Posted to the home feed",
+      );
+      setAudience(null);
+      setResetKey((k) => k + 1);
       setBody("");
       setHeadline("");
       setWithButton(false);
@@ -168,7 +228,10 @@ function Composer() {
     <Card className="h-fit p-5 lg:sticky lg:top-6">
       <h2 className="mb-4 font-display text-lg font-bold">New official post</h2>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Title (optional)" hint="Shown big on the purple-and-gold banner in the app.">
+        <Field
+          label="Title (optional)"
+          hint="Shown big on the purple-and-gold banner in the app."
+        >
           <input
             className="input"
             value={headline}
@@ -187,12 +250,21 @@ function Composer() {
             placeholder="Announce something to everyone on NetFun…"
           />
         </Field>
-        <ImagePicker file={image} onFile={setImage} label="Add a photo (optional)" aspect="aspect-[4/3]" />
+        <ImagePicker
+          file={image}
+          onFile={setImage}
+          label="Add a photo (optional)"
+          aspect="aspect-[4/3]"
+        />
         <Field
           label="Where it shows"
           hint="Home feed shows it to everyone. Picking a community also lists it on that community's page."
         >
-          <select className="input" value={communityId} onChange={(e) => setCommunityId(e.target.value)}>
+          <select
+            className="input"
+            value={communityId}
+            onChange={(e) => setCommunityId(e.target.value)}
+          >
             <option value="">Home feed only</option>
             {communities.data?.map((c) => (
               <option key={c.id} value={c.id}>
@@ -202,8 +274,15 @@ function Composer() {
             ))}
           </select>
         </Field>
-        <Field label="Link a tournament (optional)" hint="Adds a “View tournament” button to the post.">
-          <select className="input" value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
+        <Field
+          label="Link a tournament (optional)"
+          hint="Adds a “View tournament” button to the post."
+        >
+          <select
+            className="input"
+            value={tournamentId}
+            onChange={(e) => setTournamentId(e.target.value)}
+          >
             <option value="">None</option>
             {tournaments.data
               ?.filter((t) => t.status !== "draft")
@@ -216,7 +295,11 @@ function Composer() {
         </Field>
         <div className="flex flex-col gap-3 rounded-2xl border border-nf-line p-3">
           <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" checked={withButton} onChange={(e) => setWithButton(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={withButton}
+              onChange={(e) => setWithButton(e.target.checked)}
+            />
             Add a button under the post
           </label>
           {withButton && (
@@ -231,7 +314,11 @@ function Composer() {
                 />
               </Field>
               <Field label="Opens">
-                <select className="input" value={ctaTarget} onChange={(e) => setCtaTarget(e.target.value)}>
+                <select
+                  className="input"
+                  value={ctaTarget}
+                  onChange={(e) => setCtaTarget(e.target.value)}
+                >
                   {BUTTON_TARGETS.map((t) => (
                     <option key={t.url} value={t.url}>
                       {t.label}
@@ -240,7 +327,10 @@ function Composer() {
                 </select>
               </Field>
               {ctaTarget === "custom" && (
-                <Field label="Link" hint={ctaOk ? undefined : "Must start with https://"}>
+                <Field
+                  label="Link"
+                  hint={ctaOk ? undefined : "Must start with https://"}
+                >
                   <input
                     className="input"
                     value={ctaCustom}
@@ -253,7 +343,11 @@ function Composer() {
             </>
           )}
         </div>
-        <div role="group" aria-labelledby="pin-label" className="flex flex-col gap-1.5">
+        <div
+          role="group"
+          aria-labelledby="pin-label"
+          className="flex flex-col gap-1.5"
+        >
           <span id="pin-label" className="text-sm font-semibold text-nf-ink">
             Pin to the top of Home
           </span>
@@ -274,9 +368,20 @@ function Composer() {
               </button>
             ))}
           </div>
-          <span className="text-xs text-nf-muted">A pinned post sits above everything with a “Pinned” label.</span>
+          <span className="text-xs text-nf-muted">
+            A pinned post sits above everything with a “Pinned” label.
+          </span>
         </div>
-        <Button type="submit" loading={busy} disabled={!body.trim() || !ctaOk}>
+        <AudiencePicker
+          value={audience}
+          onChange={setAudience}
+          resetKey={resetKey}
+        />
+        <Button
+          type="submit"
+          loading={busy}
+          disabled={!body.trim() || !ctaOk || !audienceOk}
+        >
           Publish to feed
         </Button>
       </form>
@@ -296,12 +401,17 @@ function PostRow({
   const author = post.author;
   const qc = useQueryClient();
   const [pinBusy, setPinBusy] = useState(false);
-  const pinned = !!post.pinned_until && new Date(post.pinned_until) > new Date();
+  const pinned =
+    !!post.pinned_until && new Date(post.pinned_until) > new Date();
   const togglePin = async () => {
     setPinBusy(true);
     try {
       await setPostPin(post.id, pinned ? 0 : 3);
-      toast.success(pinned ? "Unpinned. It stays in the feed." : "Pinned to the top of Home for 3 days");
+      toast.success(
+        pinned
+          ? "Unpinned. It stays in the feed."
+          : "Pinned to the top of Home for 3 days",
+      );
       qc.invalidateQueries({ queryKey: ["posts"] });
     } catch (err) {
       toast.error(friendlyError(err));
@@ -315,13 +425,16 @@ function PostRow({
         <Avatar profile={author} size={40} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate font-semibold">
-            {author?.full_name || author?.username || "Deleted user"}
+            {author ? `@${author.username}` : "Deleted user"}
             {post.is_official && (
-              <BadgeCheck className="size-4 text-nf-purple" aria-label="Official" />
+              <BadgeCheck
+                className="size-4 text-nf-purple"
+                aria-label="Official"
+              />
             )}
           </p>
           <p className="truncate text-xs text-nf-muted">
-            @{author?.username} · {post.community ? post.community.name : "Home feed"} ·{" "}
+            {post.community ? post.community.name : "Home feed"} ·{" "}
             {timeAgo(post.created_at)}
           </p>
         </div>
@@ -333,18 +446,30 @@ function PostRow({
             </Badge>
           )}
           {post.visibility === "connections" && <Badge>Connections</Badge>}
+          {post.audience && Object.keys(post.audience).length > 0 && (
+            <Badge tone="dark">Only {audienceText(post.audience)}</Badge>
+          )}
           {author?.banned_at && <Badge tone="red">Author banned</Badge>}
         </div>
       </div>
-      {post.headline && <p className="px-4 pb-1 font-display text-lg font-bold">{post.headline}</p>}
-      <p className="px-4 pb-3 text-[15px] leading-relaxed whitespace-pre-line">{post.body}</p>
+      {post.headline && (
+        <p className="px-4 pb-1 font-display text-lg font-bold">
+          {post.headline}
+        </p>
+      )}
+      <p className="px-4 pb-3 text-[15px] leading-relaxed whitespace-pre-line">
+        {post.body}
+      </p>
       {post.cta_label && (
         <p className="px-4 pb-3 text-sm text-nf-soft-ink">
-          Button: <b className="text-nf-ink">{post.cta_label}</b> → {post.cta_url}
+          Button: <b className="text-nf-ink">{post.cta_label}</b> →{" "}
+          {post.cta_url}
         </p>
       )}
       {pinned && (
-        <p className="px-4 pb-3 text-xs text-nf-gold-ink">Pinned until {dateTime(post.pinned_until)}</p>
+        <p className="px-4 pb-3 text-xs text-nf-gold-ink">
+          Pinned until {dateTime(post.pinned_until)}
+        </p>
       )}
       {post.image_path && (
         <img
@@ -368,7 +493,12 @@ function PostRow({
         )}
         <span className="flex-1" />
         {post.is_official && (
-          <Button size="sm" variant="ghost" loading={pinBusy} onClick={() => void togglePin()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            loading={pinBusy}
+            onClick={() => void togglePin()}
+          >
             {pinned ? (
               <>
                 <PinOff className="size-4" /> Unpin
@@ -385,23 +515,60 @@ function PostRow({
             Ban author
           </Button>
         )}
-        <Button size="sm" variant="ghost" className="text-nf-red" onClick={onDelete}>
-          <Trash2 className="size-4" /> Delete
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-nf-red"
+          onClick={onDelete}
+        >
+          <Trash2 className="size-4" />{" "}
+          {post.is_official ? "Delete" : "Take down"}
         </Button>
       </div>
     </Card>
   );
 }
 
-function DeletePostDialog({ post, onClose }: { post: Post | null; onClose: () => void }) {
+const REASONS = [
+  "Spam or scam",
+  "Hate, bullying or harassment",
+  "Nudity or sexual content",
+  "Violence or dangerous content",
+  "False information",
+  "Breaks NetFun's community rules",
+];
+
+/** Delete an official post, or take someone's post down and tell them why. */
+function DeletePostDialog({
+  post,
+  onClose,
+}: {
+  post: Post | null;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState(REASONS[0]);
+  const [note, setNote] = useState("");
+  const theirs = !!post && !post.is_official;
+  useEffect(() => {
+    setReason(REASONS[0]);
+    setNote("");
+  }, [post]);
   const confirm = async () => {
     if (!post) return;
     setBusy(true);
     try {
-      await deletePost(post);
-      toast.success("Post deleted");
+      if (theirs) {
+        await takeDownPost(
+          post,
+          note.trim() ? `${reason}: ${note.trim()}` : reason,
+        );
+        toast.success("Post taken down. The author was told why.");
+      } else {
+        await deletePost(post);
+        toast.success("Post deleted");
+      }
       qc.invalidateQueries({ queryKey: ["posts"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       onClose();
@@ -415,23 +582,59 @@ function DeletePostDialog({ post, onClose }: { post: Post | null; onClose: () =>
     <Modal
       open={!!post}
       onClose={onClose}
-      title="Delete this post?"
+      title={
+        theirs
+          ? `Take down @${post?.author?.username ?? "this user"}'s post?`
+          : "Delete this post?"
+      }
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="danger" loading={busy} onClick={confirm}>
-            Delete post
+            {theirs ? "Take it down" : "Delete post"}
           </Button>
         </>
       }
     >
       <p className="text-[15px] text-nf-soft-ink">
-        It disappears from every feed, with its likes and comments. This can't be undone.
+        It disappears from every feed, with its likes and comments. This can't
+        be undone.
       </p>
       {post && (
-        <p className="mt-3 line-clamp-3 rounded-2xl bg-nf-field p-3 text-sm">{post.body}</p>
+        <p className="mt-3 line-clamp-3 rounded-2xl bg-nf-field p-3 text-sm">
+          {post.body}
+        </p>
+      )}
+      {theirs && (
+        <div className="mt-4 flex flex-col gap-3">
+          <Field
+            label="Why"
+            hint="The author gets a notification with this reason."
+          >
+            <select
+              className="input"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            >
+              {REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Note to the author (optional)">
+            <input
+              className="input"
+              value={note}
+              maxLength={120}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Please don't share other people's numbers"
+            />
+          </Field>
+        </div>
       )}
     </Modal>
   );

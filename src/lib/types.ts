@@ -11,7 +11,12 @@ export type Profile = {
   tournament_blocked_at?: string | null;
 };
 
-export type Community = { id: string; slug: string; name: string; is_official: boolean };
+export type Community = {
+  id: string;
+  slug: string;
+  name: string;
+  is_official: boolean;
+};
 
 export type ReviewCommunity = {
   id: string;
@@ -43,6 +48,8 @@ export type Post = {
   cta_label?: string | null;
   cta_url?: string | null;
   pinned_until?: string | null;
+  /** Who can see it (part-73); null = everyone. */
+  audience?: PostAudience | null;
   created_at: string;
   author: Profile | null;
   community: Pick<Community, "slug" | "name"> | null;
@@ -50,7 +57,13 @@ export type Post = {
   comment_count: number;
 };
 
-export type TournamentStatus = "draft" | "open" | "closed" | "live" | "completed" | "cancelled";
+export type TournamentStatus =
+  | "draft"
+  | "open"
+  | "closed"
+  | "live"
+  | "completed"
+  | "cancelled";
 
 export type Tournament = {
   id: string;
@@ -160,7 +173,12 @@ export type TournamentInvite = {
   message: string;
   created_at: string;
   responded_at: string | null;
-  community: { id: string; name: string; slug: string; theme_color: string } | null;
+  community: {
+    id: string;
+    name: string;
+    slug: string;
+    theme_color: string;
+  } | null;
 };
 
 export type WaitlistPerson = {
@@ -186,4 +204,11 @@ export type Feedback = {
   page: string | null;
   created_at: string;
   done_at?: string | null;
+};
+
+/** Who sees an official post (part-73). Each list given must match; none = everyone. */
+export type PostAudience = {
+  life_stage?: string[];
+  gender?: string[];
+  states?: string[];
 };

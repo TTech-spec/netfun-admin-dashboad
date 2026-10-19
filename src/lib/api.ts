@@ -17,6 +17,7 @@ import type {
   TournamentWithCounts,
   WaitlistPerson,
   Feedback,
+  PostAudience,
 } from "./types";
 
 // Every helper throws on error so react-query can surface it.
@@ -62,14 +63,25 @@ type RawPost = Omit<Post, "like_count" | "comment_count"> & {
 };
 
 export async function listPosts(
-  opts: { officialOnly?: boolean; limit?: number } = {},
+  opts: { officialOnly?: boolean; limit?: number; search?: string } = {},
 ) {
+  // part-73: every post, whoever it's shared with, with search.
+  const res = await supabase.rpc("admin_list_posts", {
+    p_search: opts.search?.trim() ?? "",
+    p_official_only: !!opts.officialOnly,
+    p_limit: opts.limit ?? 100,
+  });
+  if (!res.error) return (res.data ?? []) as Post[];
+  if (!missingFunction(res.error)) throw res.error;
+
+  // Before part-73: the posts this admin account can see.
   let q = supabase
     .from("posts")
     .select(POST_SELECT)
     .order("created_at", { ascending: false })
     .limit(opts.limit ?? 50);
   if (opts.officialOnly) q = q.eq("is_official", true);
+  if (opts.search?.trim()) q = q.ilike("body", `%${opts.search.trim()}%`);
   const rows = check(await q) as unknown as RawPost[];
   return rows.map(({ post_likes, post_comments, ...r }) => ({
     ...r,
@@ -109,6 +121,8 @@ export async function createOfficialPost(input: {
   cta?: { label: string; url: string } | null;
   /** Pin to the top of everyone's Home for this many days. */
   pinDays?: number;
+  /** Only these people see it (part-73). Leave out for everyone. */
+  audience?: PostAudience | null;
 }) {
   const me = await requireUserId();
   const image_path = input.image
@@ -130,6 +144,7 @@ export async function createOfficialPost(input: {
         ? { cta_label: input.cta.label.trim(), cta_url: input.cta.url.trim() }
         : {}),
       ...(input.pinDays ? { pinned_until: pinUntil(input.pinDays) } : {}),
+      ...(input.audience ? { audience: input.audience } : {}),
     }),
   );
 }
@@ -176,6 +191,35 @@ export async function deletePost(post: Pick<Post, "id" | "image_path">) {
   // Best effort: the post is gone either way. (Cloudinary photos are cleaned up by the app.)
   if (isStoragePath(post.image_path))
     await supabase.storage.from("post-images").remove([post.image_path]);
+}
+
+/**
+ * Takes any post down and tells its author why (part-73).
+ * Before part-73 is run it just deletes the post.
+ */
+export async function takeDownPost(
+  post: Pick<Post, "id" | "image_path">,
+  reason: string,
+) {
+  const res = await supabase.rpc("admin_take_down_post", {
+    p_post: post.id,
+    p_reason: reason.trim(),
+  });
+  if (res.error && !missingFunction(res.error)) throw res.error;
+  if (res.error) return deletePost(post);
+  if (isStoragePath(post.image_path))
+    await supabase.storage.from("post-images").remove([post.image_path]);
+}
+
+/** How many people an audience reaches (part-73). null before it's run. */
+export async function audienceCount(
+  audience: PostAudience | null,
+): Promise<number | null> {
+  const res = await supabase.rpc("admin_audience_count", {
+    p_audience: audience,
+  });
+  if (res.error) return null;
+  return Number(res.data ?? 0);
 }
 
 export async function listCommunities(): Promise<Community[]> {

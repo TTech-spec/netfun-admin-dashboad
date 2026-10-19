@@ -73,6 +73,11 @@ export function friendlyError(err: unknown): string {
   if (msg.includes("delete_refused"))
     return "Supabase didn't allow the delete. Run part-44-admin-deletes.sql (and part-12) in Supabase, then try again.";
   if (msg.includes("post_not_found")) return "That post was already deleted.";
+  if (
+    msg.includes("audience") &&
+    (msg.includes("column") || msg.includes("schema cache"))
+  )
+    return "Run part-73-post-audience-takedown.sql from the app repo in Supabase first.";
   if (msg.includes("Invalid login credentials"))
     return "That email and password don't match. No password yet? Use Google or an email link.";
   if (/signups not allowed for otp|user not found/i.test(msg))
