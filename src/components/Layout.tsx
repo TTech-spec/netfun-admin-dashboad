@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   BadgeCheck,
   DoorOpen,
+  Footprints,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -27,6 +28,7 @@ const NAV = [
   { to: "/users", label: "Users", icon: Users },
   { to: "/waitlist", label: "Waitlist", icon: DoorOpen },
   { to: "/feedback", label: "Feedback", icon: MessageSquareHeart },
+  { to: "/visitors", label: "Visitors", icon: Footprints },
 ];
 
 export function Layout() {

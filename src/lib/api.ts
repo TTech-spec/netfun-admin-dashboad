@@ -18,6 +18,9 @@ import type {
   WaitlistPerson,
   Feedback,
   PostAudience,
+  RecentVisitor,
+  PageVisit,
+  VisitStats,
 } from "./types";
 
 // Every helper throws on error so react-query can surface it.
@@ -918,4 +921,38 @@ export async function deleteFeedback(id: string) {
     await supabase.from("feedback").delete().eq("id", id).select("id"),
   ) as { id: string }[];
   if (!rows.length) throw new Error("feedback_admin_missing");
+}
+
+// ─── Visitors: who opened which page, and when (part-93) ─────────────────
+
+export async function listRecentVisitors(
+  search = "",
+): Promise<RecentVisitor[]> {
+  return check(
+    await supabase.rpc("admin_recent_visitors", {
+      p_search: search.trim(),
+      p_limit: 300,
+    }),
+  ) as RecentVisitor[];
+}
+
+export async function listPageVisits(
+  opts: {
+    userId?: string | null;
+    visitorId?: string | null;
+    search?: string;
+  } = {},
+): Promise<PageVisit[]> {
+  return check(
+    await supabase.rpc("admin_page_visits", {
+      p_user: opts.userId ?? null,
+      p_visitor: opts.visitorId ?? null,
+      p_search: opts.search?.trim() ?? "",
+      p_limit: 300,
+    }),
+  ) as PageVisit[];
+}
+
+export async function getVisitStats(): Promise<VisitStats> {
+  return check(await supabase.rpc("admin_visit_stats")) as VisitStats;
 }

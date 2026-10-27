@@ -101,6 +101,8 @@ export function friendlyError(err: unknown): string {
     msg.includes("public.feedback")
   )
     return "Run part-64-feedback.sql from the app repo in Supabase first.";
+  if (/admin_recent_visitors|admin_page_visits|admin_visit_stats/.test(msg))
+    return "Run part-93-page-visits.sql from the app repo in Supabase first.";
   if (/admin_waitlist|admin_admit|admin_unadmit/.test(msg))
     return "Run part-52-admin-waitlist.sql from the app repo in Supabase first.";
   if (

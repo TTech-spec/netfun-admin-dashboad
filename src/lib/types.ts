@@ -212,3 +212,34 @@ export type PostAudience = {
   gender?: string[];
   states?: string[];
 };
+
+/** The latest visit of one person or guest (part-93). */
+export type RecentVisitor = {
+  user_id: string | null;
+  visitor_id: string | null;
+  username: string | null;
+  avatar_color: string | null;
+  last_path: string;
+  last_at: string;
+  device: "phone" | "tablet" | "computer" | null;
+  visits_today: number;
+  pages_today: number;
+};
+
+export type PageVisit = {
+  id: number;
+  user_id: string | null;
+  visitor_id: string | null;
+  username: string | null;
+  avatar_color: string | null;
+  path: string;
+  device: "phone" | "tablet" | "computer" | null;
+  created_at: string;
+};
+
+export type VisitStats = {
+  visits_today: number;
+  people_today: number;
+  guests_today: number;
+  top_pages: { path: string; visits: number }[];
+};

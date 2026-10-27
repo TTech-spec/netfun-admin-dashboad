@@ -15,6 +15,7 @@ import { TournamentDetailPage } from "@/pages/TournamentDetail";
 import { UsersPage } from "@/pages/Users";
 import { WaitlistPage } from "@/pages/Waitlist";
 import { FeedbackPage } from "@/pages/Feedback";
+import { VisitorsPage } from "@/pages/Visitors";
 
 function Gate() {
   const { ready, session, isAdmin, adminError, recovery, signOut } = useAuth();
@@ -71,6 +72,7 @@ function Gate() {
           <Route path="users" element={<UsersPage />} />
           <Route path="waitlist" element={<WaitlistPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
+          <Route path="visitors" element={<VisitorsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
